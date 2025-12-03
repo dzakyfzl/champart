@@ -1,0 +1,947 @@
+<!DOCTYPE html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Champart — Admin Pengawas</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+      body.theme-dark { background-color: #0b1020 !important; color: #e5e7eb !important; }
+      body.theme-dark .bg-white { background-color: #1f2937 !important; }
+      body.theme-dark .bg-gray-50 { background-color: #111827 !important; }
+      body.theme-dark .text-gray-900 { color: #e5e7eb !important; }
+      body.theme-dark .text-gray-600 { color: #9ca3af !important; }
+      body.theme-dark .border { border-color: #374151 !important; }
+      body.theme-dark input, body.theme-dark select, body.theme-dark textarea { background-color: #111827 !important; color: #e5e7eb !important; border-color: #374151 !important; }
+    </style>
+  </head>
+  <body class="bg-gray-50 text-gray-900">
+    <div id="root"></div>
+    <script type="text/babel">
+      const { useState, useEffect } = React
+
+      function NavButton({ children, title, active, onClick }) {
+        return (
+          <button class={`w-12 h-12 grid place-items-center rounded-full ${active ? 'bg-gray-200' : 'hover:bg-gray-100'} transition`} title={title} onClick={onClick}>
+            <div class={`${active ? 'text-gray-900' : 'text-gray-600'}`}>{children}</div>
+          </button>
+        )
+      }
+
+      function IconHome() {
+        return (
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 10.5l9-7 9 7" />
+            <path d="M5.5 10.5v8.5h13v-8.5" />
+            <path d="M10 19v-5h4v5" />
+          </svg>
+        )
+      }
+
+      function IconUser() {
+        return (
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="7.5" r="3" />
+            <path d="M5 20c0-4 14-4 14 0" />
+          </svg>
+        )
+      }
+
+      function IconBuilding() {
+        return (
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="5" y="3" width="14" height="18" rx="1" />
+            <rect x="8" y="6.5" width="2" height="2" />
+            <rect x="12" y="6.5" width="2" height="2" />
+            <rect x="16" y="6.5" width="2" height="2" />
+            <rect x="8" y="10.5" width="2" height="2" />
+            <rect x="12" y="10.5" width="2" height="2" />
+            <rect x="16" y="10.5" width="2" height="2" />
+            <rect x="11" y="15" width="2" height="6" />
+          </svg>
+        )
+      }
+
+      function IconKey() {
+        return (
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="8" cy="12" r="3.5" />
+            <path d="M11.5 12h8" />
+            <path d="M17 12v3" />
+            <path d="M19 12v2" />
+          </svg>
+        )
+      }
+
+      function IconPulse() {
+        return (
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 13h4l2-6 4 12 2-6h6" />
+          </svg>
+        )
+      }
+
+      function IconCog() {
+        return (
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="3" />
+            <path d="M12 4v3" />
+            <path d="M12 17v3" />
+            <path d="M4 12h3" />
+            <path d="M17 12h3" />
+            <path d="M6 6l2 2" />
+            <path d="M16 16l2 2" />
+            <path d="M18 6l-2 2" />
+            <path d="M6 18l2-2" />
+          </svg>
+        )
+      }
+
+      function Switch({ checked, onChange, label }) {
+        return (
+          <label class="inline-flex items-center gap-2 cursor-pointer select-none">
+            <span class="text-sm">{label}</span>
+            <span class={`relative inline-flex items-center w-12 h-6 rounded-full ${checked ? 'bg-green-500' : 'bg-neutral-600'}`} onClick={() => onChange(!checked)}>
+              <span class={`absolute left-0.5 top-0.5 w-5 h-5 rounded-full bg-white transition-transform ${checked ? 'translate-x-6' : 'translate-x-0'}`}></span>
+            </span>
+          </label>
+        )
+      }
+
+      function StatCard({ value, label }) {
+        return (
+          <div class="bg-neutral-700 rounded-lg px-4 py-3 text-center">
+            <div class="text-2xl font-semibold">{value}</div>
+            <div class="text-xs text-neutral-300">{label}</div>
+          </div>
+        )
+      }
+
+      function RatingScale({ value, onChange }) {
+        const colors = ['bg-red-600','bg-red-500','bg-orange-500','bg-orange-400','bg-yellow-400','bg-yellow-300','bg-lime-400','bg-green-500','bg-green-600','bg-green-700']
+        return (
+          <div class="flex flex-wrap gap-2">
+            {[...Array(10)].map((_, i) => {
+              const n = i + 1
+              const active = value === n
+              return (
+                <button key={n} class={`w-10 h-10 rounded-full text-sm font-semibold text-white ${colors[i]} ${active ? 'ring-4 ring-green-300' : ''}`} onClick={() => onChange(n)}>{n}</button>
+              )
+            })}
+          </div>
+        )
+      }
+
+      function ArrowButton({ left, onClick }) {
+        return (
+          <button class="absolute top-1/2 -translate-y-1/2 bg-neutral-800/70 hover:bg-neutral-800 text-white w-10 h-10 rounded-full grid place-items-center" style={{ [left ? 'left' : 'right']: '12px' }} onClick={onClick}>
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              {left ? (<path d="M15 18l-6-6 6-6" />) : (<path d="M9 6l6 6-6 6" />)}
+            </svg>
+          </button>
+        )
+      }
+
+      function Badge({ label }) {
+        const map = {
+          Menunggu: 'bg-yellow-100 text-yellow-800',
+          Disetujui: 'bg-green-100 text-green-800',
+          Ditolak: 'bg-red-100 text-red-800',
+          Aktif: 'bg-blue-100 text-blue-800',
+          Kadaluarsa: 'bg-gray-200 text-gray-700',
+          Dinonaktifkan: 'bg-gray-200 text-gray-700'
+        }
+        const cls = map[label] || 'bg-gray-100 text-gray-800'
+        return (
+          <span class={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${cls}`}>{label}</span>
+        )
+      }
+
+      function Toast({ toasts, remove }) {
+        return (
+          <div class="fixed top-4 right-4 space-y-2 z-50">
+            {toasts.map(t => (
+              <div key={t.id} class={`rounded-lg shadow-lg px-4 py-3 text-sm ${t.type === 'error' ? 'bg-red-600 text-white' : 'bg-gray-900 text-white'}`}
+                   onClick={() => remove(t.id)}>
+                {t.message}
+              </div>
+            ))}
+          </div>
+        )
+      }
+
+      function Modal({ open, title, children, onClose, onConfirm, confirmText = 'Konfirmasi', danger }) {
+        if (!open) return null
+        return (
+          <div class="fixed inset-0 z-40">
+            <div class="absolute inset-0 bg-black/40" onClick={onClose}></div>
+            <div class="absolute inset-0 flex items-center justify-center p-4">
+              <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg">
+                <div class="px-6 pt-6 text-lg font-semibold">{title}</div>
+                <div class="px-6 py-4 text-sm">{children}</div>
+                <div class="px-6 pb-6 flex justify-end gap-3">
+                  <button class="px-4 py-2 rounded border border-gray-300" onClick={onClose}>Batal</button>
+                  <button class={`px-4 py-2 rounded text-white ${danger ? 'bg-red-600 hover:bg-red-700' : 'bg-blue-600 hover:bg-blue-700'}`} onClick={onConfirm}>{confirmText}</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )
+      }
+
+      function Drawer({ open, title, children, onClose }) {
+        return (
+          <div class={`fixed inset-0 z-30 ${open ? '' : 'pointer-events-none'}`}>
+            <div class={`absolute inset-0 bg-black/30 transition-opacity ${open ? 'opacity-100' : 'opacity-0'}`} onClick={onClose}></div>
+            <div class={`absolute right-0 top-0 h-full w-full max-w-xl bg-white shadow-xl transition-transform ${open ? 'translate-x-0' : 'translate-x-full'}`}>
+              <div class="flex items-center justify-between px-6 py-4 border-b">
+                <div class="font-semibold">{title}</div>
+                <button class="text-sm text-gray-600 hover:text-gray-900" onClick={onClose}>Tutup</button>
+              </div>
+              <div class="p-6 text-sm overflow-y-auto h-[calc(100%-64px)]">{children}</div>
+            </div>
+          </div>
+        )
+      }
+
+      function SkeletonRow() {
+        return (
+          <tr>
+            <td class="px-4 py-3"><div class="h-4 bg-gray-200 rounded animate-pulse"></div></td>
+            <td class="px-4 py-3"><div class="h-4 bg-gray-200 rounded animate-pulse"></div></td>
+            <td class="px-4 py-3"><div class="h-4 bg-gray-200 rounded animate-pulse"></div></td>
+            <td class="px-4 py-3"><div class="h-4 bg-gray-200 rounded animate-pulse"></div></td>
+            <td class="px-4 py-3"><div class="h-4 bg-gray-200 rounded animate-pulse"></div></td>
+            <td class="px-4 py-3"><div class="h-4 bg-gray-200 rounded animate-pulse"></div></td>
+            <td class="px-4 py-3"><div class="h-8 bg-gray-200 rounded animate-pulse"></div></td>
+          </tr>
+        )
+      }
+
+      function App() {
+      const defaultSettings = {
+        moderation: { requireReasonOnReject: true, requireNoteOnApprove: false, allowBulkApprove: false, bulkLimit: 20, autoApproveLowPriority: false, slaDays: 7, rejectionTemplates: 'Dokumen tidak lengkap, Jadwal tidak sesuai, Informasi kurang jelas' },
+        secret: { defaultExpiryDays: 7, defaultMaxUses: 1, prefix: 'CHP', maskCodes: false, autoRevokeOnInstitutionReject: true },
+        notifications: { email: true, digest: 'weekly', escalateSLA: true },
+        security: { sessionTimeoutMinutes: 30, twoFA: false, impersonation: false },
+        display: { theme: 'light', tableDensity: 'comfortable', defaultTab: 'Dashboard' }
+      }
+      const [settings, setSettings] = useState(() => {
+        try { const raw = localStorage.getItem('champart_admin_settings'); return raw ? JSON.parse(raw) : defaultSettings } catch { return defaultSettings }
+      })
+      const API_BASE = window.CHAMPART_API_BASE_URL || ''
+      const AUTH_TOKEN = localStorage.getItem('champart_token') || ''
+      async function apiFetch(path, { method = 'GET', headers = {}, body } = {}) {
+        if (!API_BASE) throw new Error('API_BASE tidak dikonfigurasi')
+        const h = { 'Content-Type': 'application/json', ...headers }
+        if (AUTH_TOKEN) h['Authorization'] = `Bearer ${AUTH_TOKEN}`
+        const res = await fetch(`${API_BASE}${path}`, { method, headers: h, body: body ? JSON.stringify(body) : undefined })
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
+        const ct = res.headers.get('content-type') || ''
+        return ct.includes('application/json') ? res.json() : res.text()
+      }
+        const tabs = ['Dashboard', 'Kegiatan', 'Instansi', 'Secret Code', 'Audit Log', 'Pengaturan']
+        const initialTab = tabs.includes(settings.display?.defaultTab) ? settings.display.defaultTab : tabs[0]
+        const [tab, setTab] = useState(initialTab)
+        const [loading, setLoading] = useState(true)
+        const [error, setError] = useState('')
+        const [toasts, setToasts] = useState([])
+        const [drawer, setDrawer] = useState({ open: false, title: '', content: null })
+        const [modal, setModal] = useState({ open: false, title: '', content: null, danger: false, confirmText: 'Konfirmasi', onConfirm: null })
+        const [activities, setActivities] = useState([])
+        const [institutions, setInstitutions] = useState([])
+        const [secretCodes, setSecretCodes] = useState([])
+        const [auditLog, setAuditLog] = useState([])
+
+        useEffect(() => {
+          let cancelled = false
+          async function loadInitial() {
+            try {
+              setLoading(true)
+              if (API_BASE) {
+                const [acts, insts] = await Promise.all([
+                  apiFetch('/kegiatan?status=Menunggu'),
+                  apiFetch('/instansi?status=Menunggu')
+                ])
+                if (!cancelled) {
+                  setActivities(Array.isArray(acts) ? acts : [])
+                  setInstitutions(Array.isArray(insts) ? insts : [])
+                  setError('')
+                }
+              } else {
+                if (!cancelled) {
+                  setActivities([
+                    { id: 'K-001', nama: 'Pelatihan Pemuda', instansi: 'Dinas Pemuda', tanggal: '2025-11-19', pemohon: 'Admin A', status: 'Menunggu', prioritas: 'Sedang', lokasi: 'Aula Kecamatan', deskripsi: 'Pelatihan softskill untuk pemuda' },
+                    { id: 'K-002', nama: 'Lomba Kebersihan', instansi: 'Kelurahan Mawar', tanggal: '2025-11-22', pemohon: 'Admin B', status: 'Menunggu', prioritas: 'Tinggi', lokasi: 'RW 02', deskripsi: 'Kegiatan lomba kebersihan lingkungan' }
+                  ])
+                  setInstitutions([
+                    { id: 'I-101', nama: 'SMK Negeri 1', jenis: 'Pendidikan', tanggalDaftar: '2025-11-10', status: 'Menunggu', dokumen: 'Berkas Registrasi.pdf' },
+                    { id: 'I-102', nama: 'Karang Taruna Melati', jenis: 'Komunitas', tanggalDaftar: '2025-11-12', status: 'Menunggu', dokumen: 'Surat Keterangan.pdf' }
+                  ])
+                }
+              }
+            } catch (e) {
+              if (!cancelled) setError('Gagal memuat data awal')
+            } finally {
+              if (!cancelled) setLoading(false)
+            }
+          }
+          loadInitial()
+          return () => { cancelled = true }
+        }, [])
+
+        useEffect(() => {
+          const isDark = settings.display?.theme === 'dark'
+          document.body.classList.toggle('theme-dark', !!isDark)
+        }, [settings.display?.theme])
+
+        useEffect(() => {
+          if (!API_BASE) return
+          const url = `${API_BASE}/events${AUTH_TOKEN ? `?token=${encodeURIComponent(AUTH_TOKEN)}` : ''}`
+          let es
+          try {
+            es = new EventSource(url)
+            es.onmessage = (ev) => {
+              try {
+                const data = JSON.parse(ev.data)
+                if (data.type === 'kegiatan.status_changed') {
+                  setActivities(prev => prev.map(a => a.id === data.id ? { ...a, status: data.status } : a))
+                  addAudit('Update Status Kegiatan', data.id, data.status)
+                } else if (data.type === 'instansi.status_changed') {
+                  setInstitutions(prev => prev.map(i => i.id === data.id ? { ...i, status: data.status } : i))
+                  addAudit('Update Status Instansi', data.id, data.status)
+                }
+              } catch {}
+            }
+          } catch {}
+          // Fallback polling jika SSE gagal
+          let timer = setInterval(async () => {
+            try {
+              const acts = await apiFetch('/kegiatan?status=Menunggu')
+              const insts = await apiFetch('/instansi?status=Menunggu')
+              setActivities(Array.isArray(acts) ? acts : [])
+              setInstitutions(Array.isArray(insts) ? insts : [])
+            } catch {}
+          }, 15000)
+          return () => { if (es) es.close(); clearInterval(timer) }
+        }, [API_BASE])
+
+        function pushToast(message, type = 'info') {
+          const id = Math.random().toString(36).slice(2)
+          setToasts(prev => [...prev, { id, message, type }])
+          setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 2500)
+        }
+
+        function openDrawer(title, content) {
+          setDrawer({ open: true, title, content })
+        }
+
+        function closeDrawer() {
+          setDrawer({ open: false, title: '', content: null })
+        }
+
+        function openConfirm({ title, content, danger, confirmText, onConfirm }) {
+          setModal({ open: true, title, content, danger: !!danger, confirmText: confirmText || 'Konfirmasi', onConfirm })
+        }
+
+        function closeConfirm() {
+          setModal({ open: false, title: '', content: null, danger: false, confirmText: 'Konfirmasi', onConfirm: null })
+        }
+
+        function addAudit(action, target, extra) {
+          const time = new Date().toLocaleString('id-ID')
+          setAuditLog(prev => [{ waktu: time, aksi: action, target, detail: extra || '' }, ...prev])
+        }
+
+        async function approveActivity(item) {
+          if (settings.moderation.requireNoteOnApprove) {
+            let note = ''
+            const Content = () => (
+              <div class="space-y-3">
+                <div>Masukkan catatan persetujuan untuk <b>{item.nama}</b>.</div>
+                <input class="w-full border rounded px-3 py-2" placeholder="Catatan persetujuan" onChange={e => note = e.target.value} />
+              </div>
+            )
+            openConfirm({
+              title: 'Setujui Kegiatan',
+              content: <Content />,
+              onConfirm: async () => {
+                const prev = activities
+                setActivities(p => p.map(a => a.id === item.id ? { ...a, status: 'Disetujui' } : a))
+                try {
+                  if (API_BASE) await apiFetch(`/kegiatan/${encodeURIComponent(item.id)}/approve`, { method: 'POST', body: { note } })
+                  addAudit('Setujui Kegiatan', item.id, note)
+                  pushToast('Kegiatan disetujui')
+                } catch (e) {
+                  setActivities(prev)
+                  pushToast('Gagal menyetujui di server', 'error')
+                }
+                closeConfirm()
+              }
+            })
+          } else {
+            openConfirm({
+              title: 'Setujui Kegiatan',
+              content: <div>Anda akan menyetujui <b>{item.nama}</b> oleh <b>{item.instansi}</b>.</div>,
+              onConfirm: async () => {
+                const prev = activities
+                setActivities(p => p.map(a => a.id === item.id ? { ...a, status: 'Disetujui' } : a))
+                try {
+                  if (API_BASE) await apiFetch(`/kegiatan/${encodeURIComponent(item.id)}/approve`, { method: 'POST' })
+                  addAudit('Setujui Kegiatan', item.id)
+                  pushToast('Kegiatan disetujui')
+                } catch (e) {
+                  setActivities(prev)
+                  pushToast('Gagal menyetujui di server', 'error')
+                }
+                closeConfirm()
+              }
+            })
+          }
+        }
+
+        function rejectActivity(item) {
+          let alasan = ''
+          const Content = () => (
+            <div class="space-y-3">
+              <div>Masukkan alasan penolakan untuk <b>{item.nama}</b>.</div>
+              <input class="w-full border rounded px-3 py-2" placeholder="Alasan penolakan" onChange={e => alasan = e.target.value} />
+            </div>
+          )
+          openConfirm({
+            title: 'Tolak Kegiatan',
+            content: <Content />,
+            danger: true,
+            confirmText: 'Tolak',
+            onConfirm: async () => {
+              if (settings.moderation.requireReasonOnReject && !alasan.trim()) { pushToast('Alasan penolakan wajib', 'error'); return }
+              const prev = activities
+              setActivities(p => p.map(a => a.id === item.id ? { ...a, status: 'Ditolak' } : a))
+              try { if (API_BASE) await apiFetch(`/kegiatan/${encodeURIComponent(item.id)}/reject`, { method: 'POST', body: { reason: alasan } }); addAudit('Tolak Kegiatan', item.id, alasan); pushToast('Kegiatan ditolak') }
+              catch (e) { setActivities(prev); pushToast('Gagal menolak di server', 'error') }
+              closeConfirm()
+            }
+          })
+        }
+
+        function approveInstitution(item) {
+          openConfirm({
+            title: 'Setujui Instansi',
+            content: <div>Anda akan menyetujui instansi <b>{item.nama}</b>.</div>,
+            onConfirm: async () => {
+              const prev = institutions
+              setInstitutions(p => p.map(i => i.id === item.id ? { ...i, status: 'Disetujui' } : i))
+              try { if (API_BASE) await apiFetch(`/instansi/${encodeURIComponent(item.id)}/approve`, { method: 'POST' }); addAudit('Setujui Instansi', item.id); pushToast('Instansi disetujui') }
+              catch (e) { setInstitutions(prev); pushToast('Gagal menyetujui instansi di server', 'error') }
+              closeConfirm()
+            }
+          })
+        }
+
+        function rejectInstitution(item) {
+          let alasan = ''
+          const Content = () => (
+            <div class="space-y-3">
+              <div>Masukkan alasan penolakan untuk instansi <b>{item.nama}</b>.</div>
+              <input class="w-full border rounded px-3 py-2" placeholder="Alasan penolakan" onChange={e => alasan = e.target.value} />
+            </div>
+          )
+          openConfirm({
+            title: 'Tolak Instansi',
+            content: <Content />,
+            danger: true,
+            confirmText: 'Tolak',
+            onConfirm: async () => {
+              if (settings.moderation.requireReasonOnReject && !alasan.trim()) { pushToast('Alasan penolakan wajib', 'error'); return }
+              const prev = institutions
+              setInstitutions(p => p.map(i => i.id === item.id ? { ...i, status: 'Ditolak' } : i))
+              try {
+                if (API_BASE) await apiFetch(`/instansi/${encodeURIComponent(item.id)}/reject`, { method: 'POST', body: { reason: alasan } })
+                if (settings.secret.autoRevokeOnInstitutionReject) {
+                  setSecretCodes(prevCodes => prevCodes.map(e => e.instansiId === item.id && e.status === 'Aktif' ? { ...e, status: 'Dinonaktifkan' } : e))
+                }
+                addAudit('Tolak Instansi', item.id, alasan)
+                pushToast('Instansi ditolak')
+              } catch (e) {
+                setInstitutions(prev)
+                pushToast('Gagal menolak instansi di server', 'error')
+              }
+              closeConfirm()
+            }
+          })
+        }
+
+        function openActivityDetail(item) {
+          openDrawer('Detail Kegiatan', (
+            <div class="space-y-3">
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <div class="text-gray-600">Nama</div>
+                  <div class="font-medium">{item.nama}</div>
+                </div>
+                <div>
+                  <div class="text-gray-600">Instansi</div>
+                  <div class="font-medium">{item.instansi}</div>
+                </div>
+                <div>
+                  <div class="text-gray-600">Tanggal</div>
+                  <div class="font-medium">{item.tanggal}</div>
+                </div>
+                <div>
+                  <div class="text-gray-600">Pemohon</div>
+                  <div class="font-medium">{item.pemohon}</div>
+                </div>
+                <div>
+                  <div class="text-gray-600">Lokasi</div>
+                  <div class="font-medium">{item.lokasi}</div>
+                </div>
+                <div>
+                  <div class="text-gray-600">Status</div>
+                  <div class="font-medium"><Badge label={item.status} /></div>
+                </div>
+              </div>
+              <div>
+                <div class="text-gray-600">Deskripsi</div>
+                <div>{item.deskripsi}</div>
+              </div>
+            </div>
+          ))
+        }
+
+        function openInstitutionDoc(item) {
+          openDrawer('Dokumen Instansi', (
+            <div class="space-y-3">
+              <div class="text-sm">{item.dokumen}</div>
+              <div class="rounded border p-4 bg-gray-50">Pratinjau dokumen tidak tersedia, gunakan unduhan dari server pada implementasi API.</div>
+            </div>
+          ))
+        }
+
+        function randomCode() {
+          const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
+          let s = ''
+          for (let i = 0; i < 8; i++) s += chars[Math.floor(Math.random() * chars.length)]
+          return `CHP-${s}`
+        }
+
+        function generateCode({ instansiId, instansiName, expiryDays, maxUses, note }) {
+          const base = settings.secret.prefix || 'CHP'
+          const code = randomCode().replace(/^[A-Z]+-/, base + '-')
+          const now = new Date()
+          const exp = new Date(now.getTime() + (expiryDays || 7) * 24 * 60 * 60 * 1000)
+          const entry = { id: Math.random().toString(36).slice(2), instansiId, instansiName, kode: code, dibuat: now.toLocaleDateString('id-ID'), kadaluarsa: exp.toLocaleDateString('id-ID'), penggunaan: 0, maksimal: maxUses || 1, status: 'Aktif', catatan: note || '' }
+          setSecretCodes(prev => [entry, ...prev])
+          addAudit('Generate Secret Code', instansiId, code)
+          pushToast('Secret code dibuat')
+          return entry
+        }
+
+        function revokeCode(entry) {
+          setSecretCodes(prev => prev.map(e => e.id === entry.id ? { ...e, status: 'Dinonaktifkan' } : e))
+          addAudit('Revoke Secret Code', entry.instansiId, entry.kode)
+          pushToast('Secret code dinonaktifkan')
+        }
+
+        function copyCode(text) {
+          if (navigator.clipboard) {
+            const masked = settings.secret.maskCodes ? text.replace(/.(?=.{4})/g, '*') : text
+            navigator.clipboard.writeText(text).then(() => pushToast(settings.secret.maskCodes ? `Kode tersalin (${masked})` : 'Kode disalin'))
+          }
+        }
+
+        function Dashboard() {
+          const menungguKegiatan = activities.filter(a => a.status === 'Menunggu').length
+          const menungguInstansi = institutions.filter(i => i.status === 'Menunggu').length
+          const kodeAktif = secretCodes.filter(s => s.status === 'Aktif').length
+          const kodeKadaluarsa = secretCodes.filter(s => s.status === 'Kadaluarsa').length
+          return (
+            <div class="space-y-6">
+              <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div class="bg-white rounded-xl shadow p-4">
+                  <div class="text-sm text-gray-600">Kegiatan menunggu</div>
+                  <div class="text-2xl font-semibold">{menungguKegiatan}</div>
+                </div>
+                <div class="bg-white rounded-xl shadow p-4">
+                  <div class="text-sm text-gray-600">Instansi menunggu</div>
+                  <div class="text-2xl font-semibold">{menungguInstansi}</div>
+                </div>
+                <div class="bg-white rounded-xl shadow p-4">
+                  <div class="text-sm text-gray-600">Kode aktif</div>
+                  <div class="text-2xl font-semibold">{kodeAktif}</div>
+                </div>
+                <div class="bg-white rounded-xl shadow p-4">
+                  <div class="text-sm text-gray-600">Kode kadaluarsa</div>
+                  <div class="text-2xl font-semibold">{kodeKadaluarsa}</div>
+                </div>
+              </div>
+              <div class="bg-white rounded-xl shadow p-4">
+                <div class="font-semibold mb-2">Aktivitas terbaru</div>
+                <div class="text-sm text-gray-600">Tindakan terakhir akan tampil di sini.</div>
+              </div>
+            </div>
+          )
+        }
+
+      function Activities() {
+        return (
+          <div class="space-y-4">
+            <div class="bg-white rounded-xl shadow">
+              <div class="p-4 flex items-center justify-between">
+                <div class="font-semibold">Daftar Kegiatan</div>
+                <div class="flex gap-2">
+                  <input class="border rounded px-3 py-2 text-sm" placeholder="Cari nama kegiatan" />
+                  <select class="border rounded px-3 py-2 text-sm"><option>Status</option><option>Menunggu</option><option>Disetujui</option><option>Ditolak</option></select>
+                </div>
+              </div>
+              <div class="overflow-x-auto">
+                <table class="min-w-full text-sm">
+                  <thead class="bg-gray-50">
+                    <tr>
+                      <th class="px-4 py-2 text-left">Nama</th>
+                      <th class="px-4 py-2 text-left">Instansi</th>
+                      <th class="px-4 py-2 text-left">Tanggal</th>
+                      <th class="px-4 py-2 text-left">Pemohon</th>
+                      <th class="px-4 py-2 text-left">Status</th>
+                      <th class="px-4 py-2 text-left">Prioritas</th>
+                      <th class="px-4 py-2 text-left">Aksi</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y">
+                    {loading && [1,2,3].map(i => <SkeletonRow key={i} />)}
+                    {!loading && activities.length === 0 && (
+                      <tr><td class="px-4 py-8 text-center text-gray-600" colSpan="7">Belum ada kegiatan</td></tr>
+                    )}
+                    {!loading && activities.map(item => (
+                      <tr key={item.id} class="hover:bg-gray-50">
+                        <td class="px-4 py-3">{item.nama}</td>
+                        <td class="px-4 py-3">{item.instansi}</td>
+                        <td class="px-4 py-3">{item.tanggal}</td>
+                        <td class="px-4 py-3">{item.pemohon}</td>
+                        <td class="px-4 py-3"><Badge label={item.status} /></td>
+                        <td class="px-4 py-3">{item.prioritas}</td>
+                        <td class="px-4 py-3">
+                          <div class="flex flex-wrap gap-2">
+                            <button class="px-3 py-1 rounded border" onClick={() => openActivityDetail(item)}>Lihat Detail</button>
+                            <button class="px-3 py-1 rounded bg-green-600 text-white" onClick={() => approveActivity(item)} disabled={item.status !== 'Menunggu'}>Setujui</button>
+                            <button class="px-3 py-1 rounded bg-red-600 text-white" onClick={() => rejectActivity(item)} disabled={item.status !== 'Menunggu'}>Tolak</button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )
+      }
+
+        function Institutions() {
+          return (
+            <div class="space-y-4">
+              <div class="bg-white rounded-xl shadow">
+                <div class="p-4 flex items-center justify-between">
+                  <div class="font-semibold">Daftar Instansi</div>
+                  <div class="flex gap-2">
+                    <input class="border rounded px-3 py-2 text-sm" placeholder="Cari nama instansi" />
+                    <select class="border rounded px-3 py-2 text-sm"><option>Status</option><option>Menunggu</option><option>Disetujui</option><option>Ditolak</option></select>
+                  </div>
+                </div>
+                <div class="overflow-x-auto">
+                  <table class="min-w-full text-sm">
+                    <thead class="bg-gray-50">
+                      <tr>
+                        <th class="px-4 py-2 text-left">Nama</th>
+                        <th class="px-4 py-2 text-left">Jenis</th>
+                        <th class="px-4 py-2 text-left">Tanggal Daftar</th>
+                        <th class="px-4 py-2 text-left">Status</th>
+                        <th class="px-4 py-2 text-left">Dokumen</th>
+                        <th class="px-4 py-2 text-left">Aksi</th>
+                      </tr>
+                    </thead>
+                    <tbody class="divide-y">
+                      {loading && [1,2,3].map(i => <SkeletonRow key={i} />)}
+                      {!loading && institutions.length === 0 && (
+                        <tr><td class="px-4 py-8 text-center text-gray-600" colSpan="6">Belum ada instansi</td></tr>
+                      )}
+                      {!loading && institutions.map(item => (
+                        <tr key={item.id} class="hover:bg-gray-50">
+                          <td class="px-4 py-3">{item.nama}</td>
+                          <td class="px-4 py-3">{item.jenis}</td>
+                          <td class="px-4 py-3">{item.tanggalDaftar}</td>
+                          <td class="px-4 py-3"><Badge label={item.status} /></td>
+                          <td class="px-4 py-3">
+                            <button class="px-3 py-1 rounded border" onClick={() => openInstitutionDoc(item)}>Lihat</button>
+                          </td>
+                          <td class="px-4 py-3">
+                            <div class="flex flex-wrap gap-2">
+                              <button class="px-3 py-1 rounded bg-green-600 text-white" onClick={() => approveInstitution(item)} disabled={item.status !== 'Menunggu'}>Setujui</button>
+                              <button class="px-3 py-1 rounded bg-red-600 text-white" onClick={() => rejectInstitution(item)} disabled={item.status !== 'Menunggu'}>Tolak</button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )
+        }
+
+        function SecretCodes() {
+          const [form, setForm] = useState({ instansiId: institutions[0]?.id || '', instansiName: institutions[0]?.nama || '', expiryDays: settings.secret.defaultExpiryDays, maxUses: settings.secret.defaultMaxUses, note: '' })
+          useEffect(() => {
+            const i = institutions.find(x => x.id === form.instansiId)
+            if (i) setForm(f => ({ ...f, instansiName: i.nama }))
+          }, [form.instansiId])
+          return (
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+              <div class="bg-white rounded-xl shadow p-4 lg:col-span-1">
+                <div class="font-semibold mb-3">Generate Secret Code</div>
+                <div class="space-y-3">
+                  <label class="block text-sm">Instansi</label>
+                  <select class="w-full border rounded px-3 py-2" value={form.instansiId} onChange={e => setForm({ ...form, instansiId: e.target.value })}>
+                    {institutions.map(i => <option key={i.id} value={i.id}>{i.nama}</option>)}
+                  </select>
+                  <div class="grid grid-cols-2 gap-3">
+                    <div>
+                      <label class="block text-sm">Masa berlaku (hari)</label>
+                      <input type="number" class="w-full border rounded px-3 py-2" value={form.expiryDays} onChange={e => setForm({ ...form, expiryDays: parseInt(e.target.value || '0') })} />
+                    </div>
+                    <div>
+                      <label class="block text-sm">Maks penggunaan</label>
+                      <input type="number" class="w-full border rounded px-3 py-2" value={form.maxUses} onChange={e => setForm({ ...form, maxUses: parseInt(e.target.value || '0') })} />
+                    </div>
+                  </div>
+                  <label class="block text-sm">Catatan</label>
+                  <textarea class="w-full border rounded px-3 py-2" rows="3" value={form.note} onChange={e => setForm({ ...form, note: e.target.value })}></textarea>
+                  <button class="w-full px-4 py-2 rounded bg-blue-600 text-white" onClick={() => generateCode(form)}>Generate</button>
+                </div>
+              </div>
+              <div class="lg:col-span-2 space-y-4">
+                <div class="bg-white rounded-xl shadow p-4">
+                  <div class="font-semibold mb-2">Riwayat Secret Code</div>
+                  <div class="overflow-x-auto">
+                    <table class="min-w-full text-sm">
+                      <thead class="bg-gray-50">
+                        <tr>
+                          <th class="px-4 py-2 text-left">Instansi</th>
+                          <th class="px-4 py-2 text-left">Kode</th>
+                          <th class="px-4 py-2 text-left">Dibuat</th>
+                          <th class="px-4 py-2 text-left">Kadaluarsa</th>
+                          <th class="px-4 py-2 text-left">Penggunaan</th>
+                          <th class="px-4 py-2 text-left">Status</th>
+                          <th class="px-4 py-2 text-left">Aksi</th>
+                        </tr>
+                      </thead>
+                      <tbody class="divide-y">
+                        {secretCodes.length === 0 && (
+                          <tr><td class="px-4 py-8 text-center text-gray-600" colSpan="7">Belum ada kode</td></tr>
+                        )}
+                        {secretCodes.map(e => (
+                          <tr key={e.id} class="hover:bg-gray-50">
+                            <td class="px-4 py-3">{e.instansiName}</td>
+                            <td class="px-4 py-3 font-mono">{e.kode}</td>
+                            <td class="px-4 py-3">{e.dibuat}</td>
+                            <td class="px-4 py-3">{e.kadaluarsa}</td>
+                            <td class="px-4 py-3">{e.penggunaan}/{e.maksimal}</td>
+                            <td class="px-4 py-3"><Badge label={e.status} /></td>
+                            <td class="px-4 py-3">
+                              <div class="flex flex-wrap gap-2">
+                                <button class="px-3 py-1 rounded border" onClick={() => copyCode(e.kode)}>Copy</button>
+                                <button class="px-3 py-1 rounded bg-red-600 text-white" onClick={() => revokeCode(e)} disabled={e.status !== 'Aktif'}>Revoke</button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )
+        }
+
+        function Audit() {
+          return (
+            <div class="bg-white rounded-xl shadow">
+              <div class="p-4 font-semibold">Audit Log</div>
+              <div class="overflow-x-auto">
+                <table class="min-w-full text-sm">
+                  <thead class="bg-gray-50">
+                    <tr>
+                      <th class="px-4 py-2 text-left">Waktu</th>
+                      <th class="px-4 py-2 text-left">Aksi</th>
+                      <th class="px-4 py-2 text-left">Target</th>
+                      <th class="px-4 py-2 text-left">Detail</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y">
+                    {auditLog.length === 0 && (
+                      <tr><td class="px-4 py-8 text-center text-gray-600" colSpan="4">Belum ada log</td></tr>
+                    )}
+                    {auditLog.map((l, idx) => (
+                      <tr key={idx} class="hover:bg-gray-50">
+                        <td class="px-4 py-3">{l.waktu}</td>
+                        <td class="px-4 py-3">{l.aksi}</td>
+                        <td class="px-4 py-3">{l.target}</td>
+                        <td class="px-4 py-3">{l.detail}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )
+        }
+
+        return (
+          <div class="h-screen flex">
+            <aside class="w-16 bg-white border-r hidden md:flex flex-col items-center py-3">
+              <div class="w-14 h-14 grid place-items-center">
+                <img src="assets/champart-logo.svg" alt="Logo" class="w-50 h-50" />
+              </div>
+              <div class="w-12 h-px bg-gray-200 my-3"></div>
+              <nav class="flex-1 flex flex-col items-center gap-3">
+                <NavButton title="Dashboard" active={tab === 'Dashboard'} onClick={() => setTab('Dashboard')}><IconHome /></NavButton>
+                <NavButton title="Kegiatan" active={tab === 'Kegiatan'} onClick={() => setTab('Kegiatan')}><IconUser /></NavButton>
+                <NavButton title="Instansi" active={tab === 'Instansi'} onClick={() => setTab('Instansi')}><IconBuilding /></NavButton>
+                <NavButton title="Secret Code" active={tab === 'Secret Code'} onClick={() => setTab('Secret Code')}><IconKey /></NavButton>
+                <NavButton title="Audit Log" active={tab === 'Audit Log'} onClick={() => setTab('Audit Log')}><IconPulse /></NavButton>
+              </nav>
+              <div class="mt-auto">
+                <NavButton title="Pengaturan" active={tab === 'Pengaturan'} onClick={() => setTab('Pengaturan')}><IconCog /></NavButton>
+              </div>
+            </aside>
+            <main class="flex-1 flex flex-col">
+              <header class="bg-white border-b">
+                <div class="px-4 py-3 flex items-center justify-between">
+                  <div class="md:hidden">
+                    <select class="border rounded px-3 py-2" value={tab} onChange={e => setTab(e.target.value)}>
+                      {tabs.map(t => <option key={t}>{t}</option>)}
+                    </select>
+                  </div>
+                  <div class="hidden md:block text-sm text-gray-600">Admin › {tab}</div>
+                  <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-full bg-gray-800 text-white grid place-items-center text-sm">AP</div>
+                  </div>
+                </div>
+              </header>
+              <section class="p-4 overflow-y-auto flex-1">
+                {error && <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-2 rounded mb-4">{error}</div>}
+                {tab === 'Dashboard' && <Dashboard />}
+                {tab === 'Kegiatan' && <Activities />}
+                {tab === 'Instansi' && <Institutions />}
+                {tab === 'Secret Code' && <SecretCodes />}
+                {tab === 'Audit Log' && <Audit />}
+                {tab === 'Pengaturan' && (
+                  <Settings settings={settings} setSettings={(v) => { setSettings(v); localStorage.setItem('champart_admin_settings', JSON.stringify(v)); pushToast('Pengaturan disimpan') }} onReset={() => { setSettings(defaultSettings); localStorage.setItem('champart_admin_settings', JSON.stringify(defaultSettings)); pushToast('Pengaturan dikembalikan') }} />
+                )}
+              </section>
+            </main>
+            <Drawer open={drawer.open} title={drawer.title} onClose={closeDrawer}>{drawer.content}</Drawer>
+            <Modal open={modal.open} title={modal.title} danger={modal.danger} confirmText={modal.confirmText} onClose={closeConfirm} onConfirm={modal.onConfirm}>{modal.content}</Modal>
+            <Toast toasts={toasts} remove={(id) => setToasts(prev => prev.filter(t => t.id !== id))} />
+          </div>
+        )
+      }
+
+      function Settings({ settings, setSettings, onReset }) {
+        const [local, setLocal] = useState(settings)
+        useEffect(() => setLocal(settings), [settings])
+        function save() { setSettings(local) }
+        return (
+          <div class="space-y-6">
+            <div class="bg-white rounded-xl shadow p-4">
+              <div class="font-semibold mb-3">Moderasi Kegiatan</div>
+              <div class="grid md:grid-cols-2 gap-4">
+                <div class="space-y-3">
+                  <Switch checked={local.moderation.requireReasonOnReject} onChange={v => setLocal({ ...local, moderation: { ...local.moderation, requireReasonOnReject: v } })} label={'Wajib alasan saat menolak'} />
+                  <Switch checked={local.moderation.requireNoteOnApprove} onChange={v => setLocal({ ...local, moderation: { ...local.moderation, requireNoteOnApprove: v } })} label={'Wajib catatan saat menyetujui'} />
+                  <Switch checked={local.moderation.allowBulkApprove} onChange={v => setLocal({ ...local, moderation: { ...local.moderation, allowBulkApprove: v } })} label={'Izinkan persetujuan massal'} />
+                  <div class="flex items-center gap-3">
+                    <span class="text-sm">Maks item per aksi</span>
+                    <input type="number" class="border rounded px-3 py-2 w-24" value={local.moderation.bulkLimit} onChange={e => setLocal({ ...local, moderation: { ...local.moderation, bulkLimit: parseInt(e.target.value || '0') } })} />
+                  </div>
+                  <div class="flex items-center gap-3">
+                    <span class="text-sm">SLA persetujuan (hari)</span>
+                    <input type="number" class="border rounded px-3 py-2 w-24" value={local.moderation.slaDays} onChange={e => setLocal({ ...local, moderation: { ...local.moderation, slaDays: parseInt(e.target.value || '0') } })} />
+                  </div>
+                </div>
+                <div class="space-y-3">
+                  <Switch checked={local.moderation.autoApproveLowPriority} onChange={v => setLocal({ ...local, moderation: { ...local.moderation, autoApproveLowPriority: v } })} label={'Auto-approve prioritas rendah'} />
+                  <div>
+                    <div class="text-sm mb-1">Template alasan penolakan (pisahkan koma)</div>
+                    <textarea class="border rounded px-3 py-2 w-full" rows="3" value={local.moderation.rejectionTemplates} onChange={e => setLocal({ ...local, moderation: { ...local.moderation, rejectionTemplates: e.target.value } })}></textarea>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="bg-white rounded-xl shadow p-4">
+              <div class="font-semibold mb-3">Secret Code</div>
+              <div class="grid md:grid-cols-2 gap-4">
+                <div class="space-y-3">
+                  <div class="flex items-center gap-3"><span class="text-sm">Default masa berlaku (hari)</span><input type="number" class="border rounded px-3 py-2 w-24" value={local.secret.defaultExpiryDays} onChange={e => setLocal({ ...local, secret: { ...local.secret, defaultExpiryDays: parseInt(e.target.value || '0') } })} /></div>
+                  <div class="flex items-center gap-3"><span class="text-sm">Default maks penggunaan</span><input type="number" class="border rounded px-3 py-2 w-24" value={local.secret.defaultMaxUses} onChange={e => setLocal({ ...local, secret: { ...local.secret, defaultMaxUses: parseInt(e.target.value || '0') } })} /></div>
+                  <div class="flex items-center gap-3"><span class="text-sm">Prefix kode</span><input class="border rounded px-3 py-2 w-32" value={local.secret.prefix} onChange={e => setLocal({ ...local, secret: { ...local.secret, prefix: e.target.value } })} /></div>
+                </div>
+                <div class="space-y-3">
+                  <Switch checked={local.secret.maskCodes} onChange={v => setLocal({ ...local, secret: { ...local.secret, maskCodes: v } })} label={'Mask kode saat ditampilkan'} />
+                  <Switch checked={local.secret.autoRevokeOnInstitutionReject} onChange={v => setLocal({ ...local, secret: { ...local.secret, autoRevokeOnInstitutionReject: v } })} label={'Revoke otomatis saat instansi ditolak'} />
+                </div>
+              </div>
+            </div>
+            <div class="bg-white rounded-xl shadow p-4">
+              <div class="font-semibold mb-3">Notifikasi</div>
+              <div class="grid md:grid-cols-2 gap-4">
+                <div class="space-y-3">
+                  <Switch checked={local.notifications.email} onChange={v => setLocal({ ...local, notifications: { ...local.notifications, email: v } })} label={'Notifikasi email'} />
+                  <div class="flex items-center gap-3"><span class="text-sm">Digest</span><select class="border rounded px-3 py-2 w-32" value={local.notifications.digest} onChange={e => setLocal({ ...local, notifications: { ...local.notifications, digest: e.target.value } })}><option value="daily">daily</option><option value="weekly">weekly</option></select></div>
+                </div>
+                <div class="space-y-3">
+                  <Switch checked={local.notifications.escalateSLA} onChange={v => setLocal({ ...local, notifications: { ...local.notifications, escalateSLA: v } })} label={'Eskalasi SLA'} />
+                </div>
+              </div>
+            </div>
+            <div class="bg-white rounded-xl shadow p-4">
+              <div class="font-semibold mb-3">Keamanan & Peran</div>
+              <div class="grid md:grid-cols-2 gap-4">
+                <div class="space-y-3">
+                  <div class="flex items-center gap-3"><span class="text-sm">Timeout sesi (menit)</span><input type="number" class="border rounded px-3 py-2 w-24" value={local.security.sessionTimeoutMinutes} onChange={e => setLocal({ ...local, security: { ...local.security, sessionTimeoutMinutes: parseInt(e.target.value || '0') } })} /></div>
+                  <Switch checked={local.security.twoFA} onChange={v => setLocal({ ...local, security: { ...local.security, twoFA: v } })} label={'2FA untuk Admin Pengawas'} />
+                </div>
+                <div class="space-y-3">
+                  <Switch checked={local.security.impersonation} onChange={v => setLocal({ ...local, security: { ...local.security, impersonation: v } })} label={'Impersonation aman'} />
+                </div>
+              </div>
+            </div>
+            <div class="bg-white rounded-xl shadow p-4">
+              <div class="font-semibold mb-3">Tampilan & Preferensi</div>
+              <div class="grid md:grid-cols-2 gap-4">
+                <div class="space-y-3">
+                  <div class="flex items-center gap-3"><span class="text-sm">Tema</span><select class="border rounded px-3 py-2 w-32" value={local.display.theme} onChange={e => setLocal({ ...local, display: { ...local.display, theme: e.target.value } })}><option value="light">light</option><option value="dark">dark</option></select></div>
+                  <div class="flex items-center gap-3"><span class="text-sm">Kepadatan tabel</span><select class="border rounded px-3 py-2 w-40" value={local.display.tableDensity} onChange={e => setLocal({ ...local, display: { ...local.display, tableDensity: e.target.value } })}><option value="comfortable">comfortable</option><option value="compact">compact</option></select></div>
+                </div>
+                <div class="space-y-3">
+                  <div class="flex items-center gap-3"><span class="text-sm">Tab default</span><select class="border rounded px-3 py-2 w-40" value={local.display.defaultTab} onChange={e => setLocal({ ...local, display: { ...local.display, defaultTab: e.target.value } })}><option>Dashboard</option><option>Kegiatan</option><option>Instansi</option><option>Secret Code</option><option>Audit Log</option></select></div>
+                </div>
+              </div>
+              <div class="flex gap-3 mt-4">
+                <button class="px-4 py-2 rounded bg-blue-600 text-white" onClick={save}>Simpan</button>
+                <button class="px-4 py-2 rounded border" onClick={onReset}>Kembalikan Default</button>
+              </div>
+            </div>
+          </div>
+        )
+      }
+
+      const root = ReactDOM.createRoot(document.getElementById('root'))
+      root.render(<App />)
+    </script>
+  </body>
+</html>

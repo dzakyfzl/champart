@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Champart — Admin Instansi</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+      body.theme-dark { background-color: #0b1020 !important; color: #e5e7eb !important; }
+      body.theme-dark .bg-white { background-color: #1f2937 !important; }
+      body.theme-dark .bg-gray-50 { background-color: #111827 !important; }
+      body.theme-dark .text-gray-900 { color: #e5e7eb !important; }
+      body.theme-dark .text-gray-600 { color: #9ca3af !important; }
+      body.theme-dark .border { border-color: #374151 !important; }
+      body.theme-dark input, body.theme-dark select, body.theme-dark textarea { background-color: #111827 !important; color: #e5e7eb !important; border-color: #374151 !important; }
+    </style>
+  </head>
+  <body class="bg-gray-50 text-gray-900">
+    <div id="root"></div>
+    <script type="text/babel">
+      const { useState, useEffect } = React
+      const API_BASE = window.CHAMPART_API_BASE_URL || ''
+      const AUTH_TOKEN = localStorage.getItem('champart_token') || ''
+      async function apiFetch(path, { method = 'GET', headers = {}, body } = {}) {
+        if (!API_BASE) throw new Error('API_BASE tidak dikonfigurasi')
+        const h = { 'Content-Type': 'application/json', ...headers }
+        if (AUTH_TOKEN) h['Authorization'] = `Bearer ${AUTH_TOKEN}`
+        const res = await fetch(`${API_BASE}${path}`, { method, headers: h, body: body ? JSON.stringify(body) : undefined })
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
+        const ct = res.headers.get('content-type') || ''
+        return ct.includes('application/json') ? res.json() : res.text()
+      }
+
+      function NavButton({ children, title, active, onClick }) {
+        return (
+          <button class={`w-12 h-12 grid place-items-center rounded-full ${active ? 'bg-gray-200' : 'hover:bg-gray-100'} transition`} title={title} onClick={onClick}>
+            <div class={`${active ? 'text-gray-900' : 'text-gray-600'}`}>{children}</div>
+          </button>
+        )
+      }
+
+      function IconHome() { return (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5l9-7 9 7" /><path d="M5.5 10.5v8.5h13v-8.5" /><path d="M10 19v-5h4v5" /></svg>) }
+      function IconList() { return (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13" /><path d="M8 12h13" /><path d="M8 18h13" /><circle cx="3" cy="6" r="1" /><circle cx="3" cy="12" r="1" /><circle cx="3" cy="18" r="1" /></svg>) }
+      function IconUsers() { return (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H7a4 4 0 00-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 00-3-3.87" /><path d="M16 3.13a4 4 0 010 7.75" /></svg>) }
+      function IconUser() { return (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="7.5" r="3" /><path d="M5 20c0-4 14-4 14 0" /></svg>) }
+      function IconBuilding() { return (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="1" /><rect x="11" y="15" width="2" height="6" /></svg>) }
+      function IconLogout() { return (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><path d="M16 17l5-5-5-5" /><path d="M21 12H9" /></svg>) }
+
+      function Toast({ toasts, remove }) {
+        return (
+          <div class="fixed top-4 right-4 space-y-2 z-50">
+            {toasts.map(t => (
+              <div key={t.id} class={`rounded-lg shadow-lg px-4 py-3 text-sm ${t.type === 'error' ? 'bg-red-600 text-white' : 'bg-gray-900 text-white'}`} onClick={() => remove(t.id)}>{t.message}</div>
+            ))}
+          </div>
+        )
+      }
+
+      function Modal({ open, title, children, onClose, onConfirm, confirmText = 'Simpan', danger }) {
+        if (!open) return null
+        return (
+          <div class="fixed inset-0 z-40">
+            <div class="absolute inset-0 bg-black/40" onClick={onClose}></div>
+            <div class="absolute inset-0 flex items-center justify-center p-4">
+              <div class="bg-white rounded-xl shadow-2xl w-full max-w-xl">
+                <div class="px-6 pt-6 text-lg font-semibold">{title}</div>
+                <div class="px-6 py-4 text-sm">{children}</div>
+                <div class="px-6 pb-6 flex justify-end gap-3">
+                  <button class="px-4 py-2 rounded border" onClick={onClose}>Batal</button>
+                  <button class={`px-4 py-2 rounded text-white ${danger ? 'bg-red-600 hover:bg-red-700' : 'bg-blue-600 hover:bg-blue-700'}`} onClick={onConfirm}>{confirmText}</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )
+      }
+
+      function Badge({ label }) {
+        const map = { Draft: 'bg-gray-100 text-gray-800', Menunggu: 'bg-yellow-100 text-yellow-800', Disetujui: 'bg-green-100 text-green-800', Ditolak: 'bg-red-100 text-red-800' }
+        const cls = map[label] || 'bg-gray-100 text-gray-800'
+        return (<span class={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${cls}`}>{label}</span>)
+      }
+
+      function fileToDataUrl(file) {
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader()
+          reader.onload = () => resolve(reader.result)
+          reader.onerror = reject
+          reader.readAsDataURL(file)
+        })
+      }
+
+      function App() {
+        const tabs = ['Dashboard', 'Kegiatan', 'Akun Tambahan', 'Profil Akun', 'Profil Instansi']
+        const [tab, setTab] = useState(tabs[0])
+        const [toasts, setToasts] = useState([])
+        const [modal, setModal] = useState({ open: false, title: '', content: null, confirmText: 'Simpan', danger: false, onConfirm: null })
+        const [activities, setActivities] = useState(() => { try { const raw = localStorage.getItem('instansi_activities'); return raw ? JSON.parse(raw) : [] } catch { return [] } })
+        const [requests, setRequests] = useState(() => { try { const raw = localStorage.getItem('instansi_requests'); return raw ? JSON.parse(raw) : [] } catch { return [] } })
+        const [account, setAccount] = useState(() => { try { const raw = localStorage.getItem('instansi_account'); return raw ? JSON.parse(raw) : { name: 'Admin Instansi', email: 'admin@instansi.id', phone: '', avatar: '' } } catch { return { name: 'Admin Instansi', email: 'admin@instansi.id', phone: '', avatar: '' } } })
+        const [institution, setInstitution] = useState(() => { try { const raw = localStorage.getItem('instansi_profile'); return raw ? JSON.parse(raw) : { id: 'I-LOCAL', name: 'Instansi Anda', logo: '' } } catch { return { id: 'I-LOCAL', name: 'Instansi Anda', logo: '' } } })
+
+        useEffect(() => { try { localStorage.setItem('instansi_activities', JSON.stringify(activities)) } catch {} }, [activities])
+        useEffect(() => { try { localStorage.setItem('instansi_requests', JSON.stringify(requests)) } catch {} }, [requests])
+        useEffect(() => { try { localStorage.setItem('instansi_account', JSON.stringify(account)) } catch {} }, [account])
+        useEffect(() => { try { localStorage.setItem('instansi_profile', JSON.stringify(institution)) } catch {} }, [institution])
+        useEffect(() => {
+          let cancel = false
+          async function loadInitial() {
+            try {
+              if (API_BASE) {
+                const list = await apiFetch(`/kegiatan?instansi_id=${encodeURIComponent(institution.id)}`)
+                if (!cancel) setActivities(Array.isArray(list) ? list : [])
+              }
+            } catch (e) { if (!cancel) pushToast('Gagal memuat kegiatan dari server', 'error') }
+          }
+          loadInitial()
+          return () => { cancel = true }
+        }, [institution.id])
+
+        useEffect(() => {
+          if (!API_BASE) return
+          const url = `${API_BASE}/events${AUTH_TOKEN ? `?token=${encodeURIComponent(AUTH_TOKEN)}` : ''}`
+          let es
+          try {
+            es = new EventSource(url)
+            es.onmessage = (ev) => {
+              try {
+                const data = JSON.parse(ev.data)
+                if (data.type === 'kegiatan.status_changed') {
+                  setActivities(prev => prev.map(a => a.id === data.id ? { ...a, status: data.status } : a))
+                  pushToast(`Status kegiatan diperbarui: ${data.status}`)
+                }
+              } catch {}
+            }
+          } catch {}
+          let timer = setInterval(async () => {
+            try { const list = await apiFetch(`/kegiatan?instansi_id=${encodeURIComponent(institution.id)}`); setActivities(Array.isArray(list) ? list : []) } catch {}
+          }, 15000)
+          return () => { if (es) es.close(); clearInterval(timer) }
+        }, [institution.id])
+
+        function pushToast(message, type = 'info') {
+          const id = Math.random().toString(36).slice(2)
+          setToasts(prev => [...prev, { id, message, type }])
+          setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 2500)
+        }
+
+        function openModal(title, content, onConfirm, confirmText = 'Simpan', danger = false) {
+          setModal({ open: true, title, content, onConfirm, confirmText, danger })
+        }
+
+        function closeModal() { setModal({ open: false, title: '', content: null, onConfirm: null, confirmText: 'Simpan', danger: false }) }
+
+        function addActivity() {
+          let data = { name: '', date: '', location: '', description: '', status: 'Draft' }
+          const Form = () => (
+            <div class="space-y-3">
+              <input class="w-full border rounded px-3 py-2" placeholder="Nama kegiatan" onChange={e => data.name = e.target.value} />
+              <input type="date" class="w-full border rounded px-3 py-2" onChange={e => data.date = e.target.value} />
+              <input class="w-full border rounded px-3 py-2" placeholder="Lokasi" onChange={e => data.location = e.target.value} />
+              <textarea class="w-full border rounded px-3 py-2" rows="3" placeholder="Deskripsi" onChange={e => data.description = e.target.value}></textarea>
+            </div>
+          )
+          openModal('Tambah Kegiatan', <Form />, () => {
+            const id = 'AK-' + (Date.now())
+            setActivities(prev => [{ id, ...data }, ...prev])
+            pushToast('Kegiatan ditambahkan')
+            closeModal()
+          })
+        }
+
+        function editActivity(item) {
+          let data = { ...item }
+          const Form = () => (
+            <div class="space-y-3">
+              <input class="w-full border rounded px-3 py-2" defaultValue={item.name} onChange={e => data.name = e.target.value} />
+              <input type="date" class="w-full border rounded px-3 py-2" defaultValue={item.date} onChange={e => data.date = e.target.value} />
+              <input class="w-full border rounded px-3 py-2" defaultValue={item.location} onChange={e => data.location = e.target.value} />
+              <textarea class="w-full border rounded px-3 py-2" rows="3" defaultValue={item.description} onChange={e => data.description = e.target.value}></textarea>
+              <select class="w-full border rounded px-3 py-2" defaultValue={item.status} onChange={e => data.status = e.target.value}>
+                <option>Draft</option>
+                <option>Menunggu</option>
+              </select>
+            </div>
+          )
+          openModal('Edit Kegiatan', <Form />, () => {
+            setActivities(prev => prev.map(a => a.id === item.id ? data : a))
+            pushToast('Kegiatan diperbarui')
+            closeModal()
+          })
+        }
+
+        function deleteActivity(item) {
+          const Confirm = () => (<div>Hapus kegiatan <b>{item.name}</b>?</div>)
+          openModal('Hapus Kegiatan', <Confirm />, () => {
+            setActivities(prev => prev.filter(a => a.id !== item.id))
+            pushToast('Kegiatan dihapus')
+            closeModal()
+          }, 'Hapus', true)
+        }
+
+        async function submitActivity(item) {
+          const prev = activities
+          setActivities(p => p.map(a => a.id === item.id ? { ...a, status: 'Menunggu' } : a))
+          try {
+            if (API_BASE) await apiFetch(`/kegiatan/${encodeURIComponent(item.id)}/submit`, { method: 'POST', body: { instansi_id: institution.id } })
+            pushToast('Kegiatan diajukan')
+          } catch (e) {
+            setActivities(prev)
+            pushToast('Gagal mengajukan kegiatan ke server', 'error')
+          }
+        }
+
+        function addRequest() {
+          let data = { name: '', email: '', role: 'Staff Instansi' }
+          const Form = () => (
+            <div class="space-y-3">
+              <input class="w-full border rounded px-3 py-2" placeholder="Nama" onChange={e => data.name = e.target.value} />
+              <input type="email" class="w-full border rounded px-3 py-2" placeholder="Email" onChange={e => data.email = e.target.value} />
+              <select class="w-full border rounded px-3 py-2" defaultValue={data.role} onChange={e => data.role = e.target.value}>
+                <option>Staff Instansi</option>
+                <option>Admin Instansi</option>
+              </select>
+            </div>
+          )
+          openModal('Ajukan Akun Tambahan', <Form />, () => {
+            const id = 'RQ-' + (Date.now())
+            setRequests(prev => [{ id, ...data, status: 'Submitted' }, ...prev])
+            pushToast('Pengajuan akun dikirim')
+            closeModal()
+          })
+        }
+
+        function deleteRequest(item) {
+          const Confirm = () => (<div>Batalkan pengajuan akun <b>{item.email}</b>?</div>)
+          openModal('Batalkan Pengajuan', <Confirm />, () => {
+            setRequests(prev => prev.filter(r => r.id !== item.id))
+            pushToast('Pengajuan dibatalkan')
+            closeModal()
+          }, 'Batalkan', true)
+        }
+
+        function saveAccount(updates) { setAccount(prev => ({ ...prev, ...updates })) }
+        function saveInstitution(updates) { setInstitution(prev => ({ ...prev, ...updates })) }
+        function handleLogout() { pushToast('Logout'); setTimeout(() => { window.location.href = 'login.html' }, 600) }
+        function deleteAccount() { openModal('Hapus Akun', <div>Anda akan menghapus akun ini.</div>, () => { setAccount({ name: '', email: '', phone: '', avatar: '' }); pushToast('Akun dihapus'); closeModal() }, 'Hapus', true) }
+
+        function Dashboard() {
+          const totalDraft = activities.filter(a => a.status === 'Draft').length
+          const totalPending = activities.filter(a => a.status === 'Menunggu').length
+          return (
+            <div class="space-y-6">
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="bg-white rounded-xl shadow p-4"><div class="text-sm text-gray-600">Draft</div><div class="text-2xl font-semibold">{totalDraft}</div></div>
+                <div class="bg-white rounded-xl shadow p-4"><div class="text-sm text-gray-600">Menunggu Persetujuan</div><div class="text-2xl font-semibold">{totalPending}</div></div>
+                <div class="bg-white rounded-xl shadow p-4"><div class="text-sm text-gray-600">Pengajuan Akun</div><div class="text-2xl font-semibold">{requests.length}</div></div>
+              </div>
+            </div>
+          )
+        }
+
+        function Activities() {
+          return (
+            <div class="space-y-4">
+              <div class="flex justify-between items-center">
+                <div class="font-semibold text-lg">Kegiatan Instansi</div>
+                <button class="px-4 py-2 rounded bg-blue-600 text-white" onClick={addActivity}>Tambah Kegiatan</button>
+              </div>
+              <div class="bg-white rounded-xl shadow">
+                <div class="overflow-x-auto">
+                  <table class="min-w-full text-sm">
+                    <thead class="bg-gray-50">
+                      <tr>
+                        <th class="px-4 py-2 text-left">Nama</th>
+                        <th class="px-4 py-2 text-left">Tanggal</th>
+                        <th class="px-4 py-2 text-left">Lokasi</th>
+                        <th class="px-4 py-2 text-left">Status</th>
+                        <th class="px-4 py-2 text-left">Aksi</th>
+                      </tr>
+                    </thead>
+                    <tbody class="divide-y">
+                      {activities.length === 0 && (<tr><td class="px-4 py-8 text-center text-gray-600" colSpan="5">Belum ada kegiatan</td></tr>)}
+                      {activities.map(item => (
+                        <tr key={item.id} class="hover:bg-gray-50">
+                          <td class="px-4 py-3">{item.name}</td>
+                          <td class="px-4 py-3">{item.date || '-'}</td>
+                          <td class="px-4 py-3">{item.location || '-'}</td>
+                          <td class="px-4 py-3"><Badge label={item.status} /></td>
+                          <td class="px-4 py-3">
+                            <div class="flex flex-wrap gap-2">
+                              <button class="px-3 py-1 rounded border" onClick={() => editActivity(item)}>Edit</button>
+                              <button class="px-3 py-1 rounded bg-green-600 text-white" onClick={() => submitActivity(item)} disabled={item.status !== 'Draft'}>Ajukan</button>
+                              <button class="px-3 py-1 rounded bg-red-600 text-white" onClick={() => deleteActivity(item)}>Hapus</button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )
+        }
+
+        function Requests() {
+          return (
+            <div class="space-y-4">
+              <div class="flex justify-between items-center">
+                <div class="font-semibold text-lg">Pengajuan Akun Tambahan</div>
+                <button class="px-4 py-2 rounded bg-blue-600 text-white" onClick={addRequest}>Ajukan Akun</button>
+              </div>
+              <div class="bg-white rounded-xl shadow">
+                <div class="overflow-x-auto">
+                  <table class="min-w-full text-sm">
+                    <thead class="bg-gray-50">
+                      <tr>
+                        <th class="px-4 py-2 text-left">Nama</th>
+                        <th class="px-4 py-2 text-left">Email</th>
+                        <th class="px-4 py-2 text-left">Peran</th>
+                        <th class="px-4 py-2 text-left">Status</th>
+                        <th class="px-4 py-2 text-left">Aksi</th>
+                      </tr>
+                    </thead>
+                    <tbody class="divide-y">
+                      {requests.length === 0 && (<tr><td class="px-4 py-8 text-center text-gray-600" colSpan="5">Belum ada pengajuan</td></tr>)}
+                      {requests.map(item => (
+                        <tr key={item.id} class="hover:bg-gray-50">
+                          <td class="px-4 py-3">{item.name}</td>
+                          <td class="px-4 py-3">{item.email}</td>
+                          <td class="px-4 py-3">{item.role}</td>
+                          <td class="px-4 py-3"><Badge label={'Menunggu'} /></td>
+                          <td class="px-4 py-3">
+                            <button class="px-3 py-1 rounded bg-red-600 text-white" onClick={() => deleteRequest(item)}>Batalkan</button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )
+        }
+
+        function ProfileAccount() {
+          const [local, setLocal] = useState(account)
+          async function handleAvatar(e) {
+            const f = e.target.files[0]
+            if (!f) return
+            const url = await fileToDataUrl(f)
+            setLocal({ ...local, avatar: url })
+          }
+          return (
+            <div class="grid md:grid-cols-2 gap-6">
+              <div class="bg-white rounded-xl shadow p-4">
+                <div class="font-semibold mb-3">Profil Akun</div>
+                <div class="space-y-3">
+                  <input class="w-full border rounded px-3 py-2" value={local.name} onChange={e => setLocal({ ...local, name: e.target.value })} />
+                  <input class="w-full border rounded px-3 py-2" value={local.email} onChange={e => setLocal({ ...local, email: e.target.value })} />
+                  <input class="w-full border rounded px-3 py-2" value={local.phone} onChange={e => setLocal({ ...local, phone: e.target.value })} />
+                  <div class="flex items-center gap-3">
+                    <input type="file" accept="image/*" onChange={handleAvatar} />
+                    {local.avatar && (<img src={local.avatar} class="w-12 h-12 rounded-full object-cover" />)}
+                  </div>
+                  <div class="flex gap-3">
+                    <button class="px-4 py-2 rounded bg-blue-600 text-white" onClick={() => { saveAccount(local); pushToast('Profil disimpan') }}>Simpan</button>
+                    <button class="px-4 py-2 rounded border" onClick={handleLogout}>Logout</button>
+                    <button class="px-4 py-2 rounded bg-red-600 text-white" onClick={deleteAccount}>Hapus Akun</button>
+                  </div>
+                </div>
+              </div>
+              <div class="bg-white rounded-xl shadow p-4">
+                <div class="font-semibold mb-3">Preview</div>
+                <div class="flex items-center gap-3">
+                  <div class="w-12 h-12 rounded-full bg-gray-200 overflow-hidden">
+                    {account.avatar ? (<img src={account.avatar} class="w-full h-full object-cover" />) : (<div class="w-full h-full grid place-items-center text-xs text-gray-500">PP</div>)}
+                  </div>
+                  <div>
+                    <div class="font-medium">{account.name}</div>
+                    <div class="text-sm text-gray-600">{account.email}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )
+        }
+
+        function ProfileInstitution() {
+          const [local, setLocal] = useState(institution)
+          async function handleLogo(e) { const f = e.target.files[0]; if (!f) return; const url = await fileToDataUrl(f); setLocal({ ...local, logo: url }) }
+          return (
+            <div class="grid md:grid-cols-2 gap-6">
+              <div class="bg-white rounded-xl shadow p-4">
+                <div class="font-semibold mb-3">Profil Instansi</div>
+                <div class="space-y-3">
+                  <input class="w-full border rounded px-3 py-2" value={local.name} onChange={e => setLocal({ ...local, name: e.target.value })} />
+                  <div class="flex items-center gap-3">
+                    <input type="file" accept="image/*" onChange={handleLogo} />
+                    {local.logo && (<img src={local.logo} class="w-16 h-16 rounded object-cover" />)}
+                  </div>
+                  <button class="px-4 py-2 rounded bg-blue-600 text-white" onClick={() => { saveInstitution(local); pushToast('Profil instansi disimpan') }}>Simpan</button>
+                </div>
+              </div>
+              <div class="bg-white rounded-xl shadow p-4">
+                <div class="font-semibold mb-3">Preview</div>
+                <div class="flex items-center gap-3">
+                  <div class="w-12 h-12 rounded bg-gray-200 overflow-hidden">
+                    {institution.logo ? (<img src={institution.logo} class="w-full h-full object-cover" />) : (<div class="w-full h-full grid place-items-center text-xs text-gray-500">Logo</div>)}
+                  </div>
+                  <div class="font-medium">{institution.name}</div>
+                </div>
+              </div>
+            </div>
+          )
+        }
+
+        return (
+          <div class="h-screen flex">
+            <aside class="w-16 bg-white border-r hidden md:flex flex-col items-center py-3">
+              <div class="w-14 h-14 grid place-items-center">
+                {institution.logo ? (<img src={institution.logo} alt="Logo" class="w-12 h-12" />) : (<img src="assets/champart-logo.svg" alt="Logo" class="w-12 h-12" />)}
+              </div>
+              <div class="w-12 h-px bg-gray-200 my-3"></div>
+              <nav class="flex-1 flex flex-col items-center gap-3">
+                <NavButton title="Dashboard" active={tab === 'Dashboard'} onClick={() => setTab('Dashboard')}><IconHome /></NavButton>
+                <NavButton title="Kegiatan" active={tab === 'Kegiatan'} onClick={() => setTab('Kegiatan')}><IconList /></NavButton>
+                <NavButton title="Akun Tambahan" active={tab === 'Akun Tambahan'} onClick={() => setTab('Akun Tambahan')}><IconUsers /></NavButton>
+                <NavButton title="Profil Akun" active={tab === 'Profil Akun'} onClick={() => setTab('Profil Akun')}><IconUser /></NavButton>
+                <NavButton title="Profil Instansi" active={tab === 'Profil Instansi'} onClick={() => setTab('Profil Instansi')}><IconBuilding /></NavButton>
+              </nav>
+              <div class="mt-auto">
+                <NavButton title="Logout" active={false} onClick={handleLogout}><IconLogout /></NavButton>
+              </div>
+            </aside>
+            <main class="flex-1 flex flex-col">
+              <header class="bg-white border-b">
+                <div class="px-4 py-3 flex items-center justify-between">
+                  <div class="md:hidden">
+                    <select class="border rounded px-3 py-2" value={tab} onChange={e => setTab(e.target.value)}>
+                      {tabs.map(t => <option key={t}>{t}</option>)}
+                    </select>
+                  </div>
+                  <div class="hidden md:block text-sm text-gray-600">{institution.name} › {tab}</div>
+                  <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-full bg-gray-800 text-white grid place-items-center text-sm overflow-hidden">
+                      {account.avatar ? (<img src={account.avatar} class="w-full h-full object-cover" />) : 'AI'}
+                    </div>
+                  </div>
+                </div>
+              </header>
+              <section class="p-4 overflow-y-auto flex-1">
+                {tab === 'Dashboard' && <Dashboard />}
+                {tab === 'Kegiatan' && <Activities />}
+                {tab === 'Akun Tambahan' && <Requests />}
+                {tab === 'Profil Akun' && <ProfileAccount />}
+                {tab === 'Profil Instansi' && <ProfileInstitution />}
+              </section>
+            </main>
+            <Modal open={modal.open} title={modal.title} confirmText={modal.confirmText} danger={modal.danger} onClose={closeModal} onConfirm={modal.onConfirm}>{modal.content}</Modal>
+            <Toast toasts={toasts} remove={(id) => setToasts(prev => prev.filter(t => t.id !== id))} />
+          </div>
+        )
+      }
+
+      const root = ReactDOM.createRoot(document.getElementById('root'))
+      root.render(<App />)
+    </script>
+  </body>
+</html>

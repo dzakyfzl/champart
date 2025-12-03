@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Champart — Register Admin</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    body { margin: 0; padding: 0; height: 100vh; width: 100vw; overflow-x: hidden; background: url('public/events-1.png') no-repeat center center; background-size: cover; background-attachment: fixed; background-position: center; backdrop-filter: blur(2px); display: flex; align-items: center; justify-content: center; }
+    .animate-blob { animation: blob 7s infinite; }
+    .animation-delay-2000 { animation-delay: 2s; }
+    .animation-delay-4000 { animation-delay: 4s; }
+    @keyframes blob { 0%, 100% { transform: translate(0, 0) scale(1); } 33% { transform: translate(30px, -50px) scale(1.1); } 66% { transform: translate(-20px, 20px) scale(0.9); } }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+    function RegisterAdminPage() {
+      const [role, setRole] = React.useState('Admin Instansi')
+      const [formData, setFormData] = React.useState({ username: '', email: '', password: '', jabatan: '', instansi: '' })
+
+      const handleInputChange = (e) => { const { name, value } = e.target; setFormData(prev => ({ ...prev, [name]: value })) }
+
+      const handleSubmit = (e) => {
+        e.preventDefault()
+        if (!formData.username || !formData.email || !formData.password || !formData.jabatan) { alert('Lengkapi semua field wajib'); return }
+        if (role === 'Admin Instansi' && !formData.instansi) { alert('Field Instansi wajib untuk Admin Instansi'); return }
+        console.log('Register Admin', { role, ...formData })
+        alert(`Registrasi ${role} berhasil!\nUsername: ${formData.username}\nEmail: ${formData.email}\nJabatan: ${formData.jabatan}${role === 'Admin Instansi' ? `\nInstansi: ${formData.instansi}` : ''}`)
+      }
+
+      return (
+        <div className="h-screen w-screen flex items-center justify-center bg-white">
+          <div className="absolute inset-0 w-full h-full">
+            <div className="absolute inset-0 bg-gradient-to-br from-cyan-300 via-blue-400 to-purple-500 opacity-40 blur-3xl"></div>
+            <div className="absolute top-0 right-1/4 w-96 h-96 bg-pink-400 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob"></div>
+            <div className="absolute bottom-0 left-1/4 w-96 h-96 bg-yellow-300 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-2000"></div>
+            <div className="absolute top-1/2 right-0 w-96 h-96 bg-purple-400 rounded-full mix-blend-multiply filter blur-3xl opacity-25 animate-blob animation-delay-4000"></div>
+          </div>
+
+          <div className="relative z-10 flex items-center justify-center min-h-screen p-4">
+            <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl p-8">
+              <div className="mb-6">
+                <p className="text-sm font-semibold text-blue-700 mb-2">Champart</p>
+                <h1 className="text-3xl font-bold text-gray-900">Register Admin</h1>
+              </div>
+
+              <div className="flex gap-2 mb-4">
+                <button className={`px-3 py-2 rounded-xl border ${role === 'Admin Instansi' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-800'}`} onClick={() => setRole('Admin Instansi')}>Admin Instansi</button>
+                <button className={`px-3 py-2 rounded-xl border ${role === 'Admin Pengawas' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-800'}`} onClick={() => setRole('Admin Pengawas')}>Admin Pengawas</button>
+              </div>
+
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div>
+                  <input type="text" name="username" placeholder="Username" value={formData.username} onChange={handleInputChange} className="w-full px-4 py-3 border-2 border-gray-800 rounded-xl focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-200 transition-all placeholder-gray-500 text-gray-900" />
+                </div>
+                <div>
+                  <input type="email" name="email" placeholder="Email" value={formData.email} onChange={handleInputChange} className="w-full px-4 py-3 border-2 border-gray-800 rounded-xl focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-200 transition-all placeholder-gray-500 text-gray-900" />
+                </div>
+                <div>
+                  <input type="password" name="password" placeholder="Password" value={formData.password} onChange={handleInputChange} className="w-full px-4 py-3 border-2 border-gray-800 rounded-xl focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-200 transition-all placeholder-gray-500 text-gray-900" />
+                </div>
+                <div>
+                  <input type="text" name="jabatan" placeholder="Jabatan" value={formData.jabatan} onChange={handleInputChange} className="w-full px-4 py-3 border-2 border-gray-800 rounded-xl focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-200 transition-all placeholder-gray-500 text-gray-900" />
+                </div>
+                {role === 'Admin Instansi' && (
+                  <div>
+                    <input type="text" name="instansi" placeholder="Instansi" value={formData.instansi} onChange={handleInputChange} className="w-full px-4 py-3 border-2 border-gray-800 rounded-xl focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-200 transition-all placeholder-gray-500 text-gray-900" />
+                  </div>
+                )}
+                <button type="submit" className="w-full mt-2 px-4 py-3 bg-blue-900 hover:bg-blue-800 text-white font-semibold rounded-xl transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">Continue</button>
+              </form>
+            </div>
+          </div>
+        </div>
+      )
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'))
+    root.render(<RegisterAdminPage />)
+  </script>
+</body>
+</html>

@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Champart - Register</title>
+  <!-- Tailwind CSS via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- React & ReactDOM via CDN -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <!-- Babel for JSX -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      height: 100vh;
+      width: 100vw;
+      overflow-x: hidden;
+      background: url('public/events-1.png') no-repeat center center;
+      background-size: cover;
+      background-attachment: fixed;
+      background-position: center;
+      backdrop-filter: blur(2px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .animate-blob {
+      animation: blob 7s infinite;
+    }
+    .animation-delay-2000 {
+      animation-delay: 2s;
+    }
+    .animation-delay-4000 {
+      animation-delay: 4s;
+    }
+    @keyframes blob {
+      0%, 100% { transform: translate(0, 0) scale(1); }
+      33% { transform: translate(30px, -50px) scale(1.1); }
+      66% { transform: translate(-20px, 20px) scale(0.9); }
+    }
+  </style>
+</head>
+<body>
+
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const majorData = {
+      "Fakultas Teknik Elektro (FTE)": [
+        "Teknik Telekomunikasi",
+        "Teknik Elektro",
+        "Teknik Biomedis",
+        "Teknik Komputer",
+        "Teknik Fisika",
+        "Teknik Sistem Energi"
+      ],
+      "Fakultas Rekayasa Industri (FRI)": [
+        "Teknik Industri",
+        "Sistem Informasi",
+        "Teknik Logistik",
+        "Manajemen Rekayasa Industri"
+      ],
+      "Fakultas Informatika (FIF)": [
+        "Informatika",
+        "Sains Data",
+        "Teknologi Informasi",
+        "Rekayasa Perangkat Lunak"
+      ],
+      "Fakultas Ekonomi dan Bisnis (FEB)": [
+        "Akuntansi",
+        "Manajemen Bisnis Telekomunikasi dan Informatika",
+        "Leisure Management",
+        "Administrasi Bisnis",
+        "Digital Business"
+      ],
+      "Fakultas Komunikasi dan Ilmu Komunikasi (FKS)": [
+        "Ilmu Komunikasi",
+        "Digital Public Relation",
+        "Digital Content Broadcasting",
+        "Psikologi"
+      ],
+      "Fakultas Industri Kreatif (FIK)": [
+        "Visual Arts",
+        "Desain Komunikasi Visual",
+        "Desain Produk & Inovasi",
+        "Kriya",
+        "Desain Interior",
+        "Film dan Animasi"
+      ]
+    };
+
+    function RegisterPage() {
+      const [formData, setFormData] = React.useState({
+        nama: '',
+        email: '',
+        nomorHP: '',
+        password: '',
+        fakultas: '',
+        programStudi: ''
+      });
+
+      const [programOptions, setProgramOptions] = React.useState([]);
+
+      const handleInputChange = (e) => {
+        const { name, value } = e.target;
+        setFormData(prev => ({ ...prev, [name]: value }));
+
+        if (name === 'fakultas') {
+          const programs = majorData[value] || [];
+          setProgramOptions(programs);
+          setFormData(prev => ({ ...prev, programStudi: '' }));
+        }
+      };
+
+      const handleSubmit = (e) => {
+        e.preventDefault();
+        console.log('Form submitted:', formData);
+        alert(`Registrasi berhasil!\nNama: ${formData.nama}\nEmail: ${formData.email}\nNomor HP: ${formData.nomorHP}\nFakultas: ${formData.fakultas}\nProgram Studi: ${formData.programStudi}`);
+      };
+
+      const faculties = Object.keys(majorData);
+
+      return (
+        <div className="h-screen w-screen flex items-center justify-center bg-white">
+          {/* Background Elements */}
+          <div className="absolute inset-0 w-full h-full">
+            <div className="absolute inset-0 bg-gradient-to-br from-cyan-300 via-blue-400 to-purple-500 opacity-40 blur-3xl"></div>
+            <div className="absolute top-0 right-1/4 w-96 h-96 bg-pink-400 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob"></div>
+            <div className="absolute bottom-0 left-1/4 w-96 h-96 bg-yellow-300 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-2000"></div>
+            <div className="absolute top-1/2 right-0 w-96 h-96 bg-purple-400 rounded-full mix-blend-multiply filter blur-3xl opacity-25 animate-blob animation-delay-4000"></div>
+          </div>
+
+          {/* Form Container */}
+          <div className="relative z-10 flex items-center justify-center min-h-screen p-4">
+            <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl p-8">
+              <div className="mb-8">
+                <p className="text-sm font-semibold text-blue-700 mb-2">Champart</p>
+                <h1 className="text-4xl font-bold text-gray-900">Welcome!</h1>
+              </div>
+
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div>
+                  <input
+                    type="text"
+                    name="nama"
+                    placeholder="Nama"
+                    value={formData.nama}
+                    onChange={handleInputChange}
+                    className="w-full px-4 py-3 border-2 border-gray-800 rounded-xl focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-200 transition-all placeholder-gray-500 text-gray-900"
+                  />
+                </div>
+
+                <div>
+                  <input
+                    type="email"
+                    name="email"
+                    placeholder="Email"
+                    value={formData.email}
+                    onChange={handleInputChange}
+                    className="w-full px-4 py-3 border-2 border-gray-800 rounded-xl focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-200 transition-all placeholder-gray-500 text-gray-900"
+                  />
+                </div>
+
+                <div>
+                  <input
+                    type="tel"
+                    name="nomorHP"
+                    placeholder="Nomor HP"
+                    value={formData.nomorHP}
+                    onChange={handleInputChange}
+                    className="w-full px-4 py-3 border-2 border-gray-800 rounded-xl focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-200 transition-all placeholder-gray-500 text-gray-900"
+                  />
+                </div>
+
+                <div>
+                  <input
+                    type="password"
+                    name="password"
+                    placeholder="Password"
+                    value={formData.password}
+                    onChange={handleInputChange}
+                    className="w-full px-4 py-3 border-2 border-gray-800 rounded-xl focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-200 transition-all placeholder-gray-500 text-gray-900"
+                  />
+                </div>
+
+                <div>
+                  <select
+                    name="fakultas"
+                    value={formData.fakultas}
+                    onChange={handleInputChange}
+                    className="w-full px-4 py-3 border-2 border-gray-800 rounded-xl focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-200 transition-all bg-white text-gray-900 appearance-none cursor-pointer pr-10"
+                  >
+                    <option value="">Fakultas</option>
+                    {faculties.map((faculty) => (
+                      <option key={faculty} value={faculty}>
+                        {faculty}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <select
+                    name="programStudi"
+                    value={formData.programStudi}
+                    onChange={handleInputChange}
+                    disabled={!formData.fakultas}
+                    className="w-full px-4 py-3 border-2 border-gray-800 rounded-xl focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-200 transition-all bg-white text-gray-900 appearance-none cursor-pointer pr-10 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <option value="">Program Studi</option>
+                    {programOptions.map((program) => (
+                      <option key={program} value={program}>
+                        {program}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <button
+                  type="submit"
+                  className="w-full mt-6 px-4 py-3 bg-blue-900 hover:bg-blue-800 text-white font-semibold rounded-xl transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                >
+                  Continue
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // Render ke DOM
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<RegisterPage />);
+  </script>
+
+</body>
+</html>
