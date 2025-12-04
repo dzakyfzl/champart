@@ -1,21 +1,47 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
-function Login() {
-  const [email, setEmail] = useState('')
+function Login({ setToken }) {
+  const [name, setName] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
     setLoading(true)
-    setTimeout(() => {
-      console.log('Login attempt:', { email, password })
+    try {
+      const res = await fetch("/api/account/login", {  
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          username: name,      
+          password: password,
+          role: "Pengguna"      
+        })
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        alert(data.message)
+        setLoading(false)
+        return
+      }
+
+      localStorage.setItem("access_token", data.access_token)
+      localStorage.setItem("refresh_token", data.refresh_token)
+      setToken(data.access_token)
+      console.log("Login Success", data)
+      navigate("/", { replace: true })                        
+    } catch (error) {
+      console.error("Error login:", error)
+      alert("Gagal terhubung ke server")
+    } finally {
       setLoading(false)
-      navigate('/')
-    }, 1000)
+    }
   }
+
 
   return (
     <div className="relative min-h-screen flex items-center justify-center overflow-hidden">
@@ -34,17 +60,17 @@ function Login() {
             <h1 className="text-4xl font-bold text-gray-900 leading-tight">
               Welcome!<br />
               What's your<br />
-              email?
+              name?
             </h1>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <input
-                type="email"
-                placeholder="Email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                type="text"
+                placeholder="Name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
                 required
                 className="w-full px-4 py-3 border-2 border-gray-800 rounded-xl text-gray-900 placeholder-gray-600 focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-200 transition-all"
               />

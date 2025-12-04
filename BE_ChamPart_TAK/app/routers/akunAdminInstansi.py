@@ -136,17 +136,33 @@ def edit_akun_admin_instansi(admin:JSONAdminInstansi, response:Response, user: A
         return {"message":"syntax email salah, harap masukkan yang benar"}
     
     try:
-        existing_account = db.execute(select(func.count('*')).select_from(AdminInstansi).where(AdminInstansi.username == admin.username)).all()
+        existing_account = db.execute(select(func.count('*')).select_from(AdminInstansi).where(AdminInstansi.username == admin.username)).first()
     except Exception as e:
         print(f"ERROR : {e}")
         response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
         return {"message":"error pada sambungan database"}
-    if existing_account[0][0] != 1:
+    if existing_account[0] != 0:
         response.status_code = status.HTTP_400_BAD_REQUEST
         return {"message":"username sudah ada, silahkan coba yang lain"}
 
-    access_token = create_token(admin.username,"AdminPengawas")
-    if access_token == "Error":
+    try:
+        db.execute(delete(RefreshToken).where(RefreshToken.username==user["username"]))
+        db.commit()
+    except Exception as e:
+        print(f"ERROR : {e}")
+        response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
+        return {"message":"error pada sambungan database"}
+    access_token = create_token(admin.username,user["role"])
+    refresh_token = create_refresh_token(admin.username,user["role"])
+    try:
+        db.execute(insert(RefreshToken).values(username=admin.username,isi=refresh_token))
+        db.commit()
+    except Exception as e:
+        print(f"ERROR : {e}")
+        response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
+        return {"message":"error pada sambungan database"}
+    
+    if access_token == "Error" or refresh_token == "Error":
         response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
         return {"message":"tidak bisa generate token, Harap coba lagi"}
     
@@ -158,7 +174,7 @@ def edit_akun_admin_instansi(admin:JSONAdminInstansi, response:Response, user: A
         response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
         return {"message":"error pada sambungan database"}
     
-    return {"message":"akun telah berhasil diedit","token":access_token}
+    return {"message":"akun telah berhasil diedit","access_token":access_token,"refresh_token":refresh_token}
 
 @router.post("/create-new", status_code=200)
 def ajukan_akun_admin_instansi_baru(request:JSONCalonAdminInstansi, response:Response, user: Annotated[dict, Depends(validate_token)],db:Session = Depends(get_db)):
@@ -222,4 +238,3 @@ def inikah_my_instansi(response:Response,user: Annotated[dict, Depends(validate_
 
 
     return {"message":"data instansi berhasil diperoleh", "data":{"nama":query[0],"alamat":query[1],"jenis":query[2],"idLampiran":query[3]}}
-

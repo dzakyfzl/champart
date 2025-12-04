@@ -15,6 +15,28 @@ function Header(){
   const searchRef = useRef(null)
   const userRef = useRef(null)
   const navigate = useNavigate();
+  const token = localStorage.getItem("access_token")
+  const [username, setUsername] = useState(null)
+
+  useEffect(() => {
+    const getUser = async () => {
+      try {
+        const res = await fetch("/api/account/get", {
+          method: "GET",
+          headers: {
+            "Authorization": `Bearer ${token}`
+          }
+        })
+        const data = await res.json()
+        console.log("User Data:", data)
+        setUsername(data.username)
+      } catch (err) {
+        console.error("Gagal ambil user:", err)
+      }
+    }
+
+    if (token) getUser()
+  }, [token])
 
   const handleSubmitSearch = (e) => {
     if (e.key === "Enter") {   
@@ -52,6 +74,29 @@ function Header(){
       window.removeEventListener('focus-search', onFocusSearch)
     }
   }, [])
+
+  const handleLogout = async () => {
+  try {
+    const accessToken = localStorage.getItem("access_token")
+
+    const res = await fetch("api/account/logout", {
+      method: "GET",
+      headers: {
+        "Authorization": `Bearer ${accessToken}`
+      }
+    })
+    const data = await res.json()
+    console.log(data.message)
+
+    } catch (err) {
+      console.error("Logout error:", err)
+    }
+    localStorage.removeItem("access_token")
+    localStorage.removeItem("refresh_token")
+
+    navigate("/login") 
+    setOpenUser(false)
+  }
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 w-full bg-white border-b">
@@ -113,7 +158,7 @@ function Header(){
           <div className="relative" ref={userRef}>
             <button type="button" onClick={()=>setOpenUser(v=>!v)} className="flex items-center gap-2 text-gray-700">
               <img src={Profile} alt="Profile" className="h-5 w-5" />
-              <span>mdtafarizza29@gmail.com</span>
+              <span>{username}</span>
               <img src={Drop} alt="Dropdown" className="h-4 w-4 text-gray-700 fill-current" />
             </button>
             {openUser && (
@@ -134,7 +179,7 @@ function Header(){
                   onClick={()=>{navigate('/editprofile'); setOpenUser(false)}}
                   className="px-4 py-2 hover:bg-gray-50 cursor-pointer">Pengaturan Akun</li>
                   <li 
-                  onClick={()=>{navigate('/login'); setOpenUser(false)}}
+                  onClick={handleLogout}
                   className="px-4 py-2 hover:bg-gray-50 cursor-pointer">Log out</li>
                 </ul>
               </div>

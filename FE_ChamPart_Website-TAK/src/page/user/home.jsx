@@ -14,10 +14,11 @@ function Home(){
   const items = new Array(8).fill(0)
   const categoryRef = useRef(null)
   const navigate = useNavigate()
-  const [active, setActive] = useState(null);
+  const [categoryActive, setCategoryActive] = useState(null)
+  const [filterActive, setFilterActive] = useState(null)
   const handleClick = (value) => {
-    setActive(prev => prev === value ? null : value);
-  };
+    setCategoryActive(prev => prev === value ? null : value)
+  }
   const minatKegiatan = [
     "Kewirausahaan (Entrepreneurship)",
     "Teknologi & Pemrograman",
@@ -81,7 +82,10 @@ function Home(){
             >
               Lihat
             </button>
-            <button onClick={()=>window.dispatchEvent(new Event('focus-search'))} className="px-6 py-2.5 rounded-lg border border-gray-100 bg-[#ACE2E1] text-white hover:bg-[#6DD5D3]">Cari</button>
+            <button onClick={()=>window.dispatchEvent(new Event('focus-search'))} 
+            className="px-6 py-2.5 rounded-lg border border-gray-100 bg-[#ACE2E1] text-white hover:bg-[#6DD5D3]">
+              Cari
+            </button>
           </div>
         </div>
         <div className="w-full">
@@ -90,34 +94,34 @@ function Home(){
       </section>
 
       <section ref={categoryRef} className="grid grid-cols-4 gap-4 text-center">
-      <Button 
-        icon={Seminar} 
-        label="Seminar" 
-        value="Seminar" 
-        active={active}
-        onClick={handleClick}
-      />
-      <Button 
-        icon={Webinar} 
-        label="Webinar" 
-        value="Webinar" 
-        active={active}
-        onClick={handleClick}
-      />
-      <Button 
-        icon={Bootcamp} 
-        label="Bootcamp" 
-        value="Bootcamp" 
-        active={active}
-        onClick={handleClick}
-      />
-      <Button 
-        icon={Lomba} 
-        label="Lomba" 
-        value="Lomba" 
-        active={active}
-        onClick={handleClick}
-      />
+        <Button 
+          icon={Seminar} 
+          label="Seminar" 
+          value="Seminar" 
+          active={categoryActive}
+          onClick={handleClick}
+        />
+        <Button 
+          icon={Webinar} 
+          label="Webinar" 
+          value="Webinar" 
+          active={categoryActive}
+          onClick={handleClick}
+        />
+        <Button 
+          icon={Bootcamp} 
+          label="Bootcamp" 
+          value="Bootcamp" 
+          active={categoryActive}
+          onClick={handleClick}
+        />
+        <Button 
+          icon={Lomba} 
+          label="Lomba" 
+          value="Lomba" 
+          active={categoryActive}
+          onClick={handleClick}
+        />
       </section>
 
      <section className="flex items-center justify-center border-y py-3">
@@ -135,10 +139,10 @@ function Home(){
         {["All","Most Popular","New Arrival"].map(t => (
           <button
             key={t}
-            onClick={()=>setActive(t)}
+            onClick={()=>setFilterActive(prev => prev === t ? null : t)}
             className={`group relative px-4 py-2 whitespace-nowrap transition-colors
-              ${active===t 
-                ? 'text-[#008DDA] border-b-2 border-[#008DDA]' 
+              ${filterActive===t 
+                ? 'text-[#008DDA] border-b-2 border-[#008DDA]'
                 : 'hover:text-gray-300 hover:border-b-2 hover:border-gray-200'}`}
           >
             {t}

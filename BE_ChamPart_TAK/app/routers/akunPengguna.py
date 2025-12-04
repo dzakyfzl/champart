@@ -86,17 +86,33 @@ def edit_akun_pengguna(pengguna:JSONPengguna, response:Response, user: Annotated
         return {"message":"syntax email salah, harap masukkan yang benar"}
     
     try:
-        existing_account = db.execute(select(func.count('*')).select_from(Pengguna).where(Pengguna.username == pengguna.username)).all()
+        existing_account = db.execute(select(func.count('*')).select_from(Pengguna).where(Pengguna.username == pengguna.username)).first()
     except Exception as e:
         print(f"ERROR : {e}")
         response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
         return {"message":"error pada sambungan database"}
-    if existing_account[0][0] != 1:
+    if existing_account[0] != 0:
         response.status_code = status.HTTP_400_BAD_REQUEST
         return {"message":"username sudah ada, silahkan coba yang lain"}
 
-    access_token = create_token(pengguna.username,"AdminPengawas")
-    if access_token == "Error":
+    try:
+        db.execute(delete(RefreshToken).where(RefreshToken.username==pengguna.username))
+        db.commit()
+    except Exception as e:
+        print(f"ERROR : {e}")
+        response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
+        return {"message":"error pada sambungan database"}
+    access_token = create_token(pengguna.username,user["role"])
+    refresh_token = create_refresh_token(pengguna.username,user["role"])
+    try:
+        db.execute(insert(RefreshToken).values(username=pengguna.username,isi=refresh_token))
+        db.commit()
+    except Exception as e:
+        print(f"ERROR : {e}")
+        response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
+        return {"message":"error pada sambungan database"}
+    
+    if access_token == "Error" or refresh_token == "Error":
         response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
         return {"message":"tidak bisa generate token, Harap coba lagi"}
     
@@ -108,4 +124,4 @@ def edit_akun_pengguna(pengguna:JSONPengguna, response:Response, user: Annotated
         response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
         return {"message":"error pada sambungan database"}
     
-    return {"message":"akun telah berhasil diedit","token":access_token}
+    return {"message":"akun telah berhasil diedit","access_token":access_token,"refresh_token":refresh_token}

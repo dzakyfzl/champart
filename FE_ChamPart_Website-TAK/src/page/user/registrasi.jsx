@@ -25,11 +25,41 @@ function Registrasi() {
     }
   }
 
-  const handleSubmit = (e) => {
-    e.preventDefault()
-    console.log('Registrasi:', formData)
-    navigate('/login')
+  const handleSubmit = async (e) => {
+  e.preventDefault()
+  const payload = {
+    username: formData.nama,       
+    email: formData.email,
+    no_telp: formData.nomorHP,
+    password: formData.password,
+    prodi: formData.programStudi,
+    fakultas: formData.fakultas
   }
+  try {
+    const res = await fetch("/api/account/pengguna/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    })
+
+    const data = await res.json()
+
+    if (!res.ok) {
+      alert(data.message)
+      return
+    }
+    localStorage.setItem("access_token", data.access_token)
+    localStorage.setItem("refresh_token", data.refresh_token)
+
+    alert("Registrasi Berhasil!")
+    navigate("/login") 
+
+  } catch (err) {
+    console.error(err)
+    alert("Tidak dapat terhubung ke server")
+  }
+}
+
 
   const faculties = Object.keys(majorData)
 
