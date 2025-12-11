@@ -86,12 +86,19 @@ def edit_akun_pengguna(pengguna:JSONPengguna, response:Response, user: Annotated
         return {"message":"syntax email salah, harap masukkan yang benar"}
     
     try:
-        existing_account = db.execute(select(func.count('*')).select_from(Pengguna).where(Pengguna.username == pengguna.username)).first()
+        existing_conflict = db.execute(
+            select(func.count('*'))
+            .select_from(Pengguna)
+            .where(
+                Pengguna.username == pengguna.username,
+                Pengguna.username != user["username"]
+            )
+        ).first()
     except Exception as e:
         print(f"ERROR : {e}")
         response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
         return {"message":"error pada sambungan database"}
-    if existing_account[0] != 0:
+    if existing_conflict[0] != 0:
         response.status_code = status.HTTP_400_BAD_REQUEST
         return {"message":"username sudah ada, silahkan coba yang lain"}
 

@@ -9,6 +9,7 @@ class Kegiatan(Base):
 
     idKegiatan = Column(Integer, primary_key=True, autoincrement=True)
     nama = Column(String(100), nullable=False)
+    jenis = Column(String(50), nullable=False)
     deskripsi = Column(Text, nullable=False)
     waktu = Column(DateTime, nullable=False)
     nominal_TAK = Column(Integer, nullable=False)

@@ -140,6 +140,7 @@ def get_semua_simpan(
             JSONSimpanResponse(
                 idKegiatan=s.kegiatan.idKegiatan,
                 nama_kegiatan=s.kegiatan.nama,
+                jenis=s.kegiatan.jenis,
                 deskripsi=s.kegiatan.deskripsi,
                 waktu_kegiatan=s.kegiatan.waktu,
                 nominal_TAK=s.kegiatan.nominal_TAK,
@@ -207,6 +208,7 @@ def get_history_simpan(
             JSONSimpanResponse(
                 idKegiatan=s.kegiatan.idKegiatan,
                 nama_kegiatan=s.kegiatan.nama,
+                jenis=s.kegiatan.jenis,
                 deskripsi=s.kegiatan.deskripsi,
                 waktu_kegiatan=s.kegiatan.waktu,
                 nominal_TAK=s.kegiatan.nominal_TAK,

@@ -130,14 +130,15 @@ async def create_upload_file(user: Annotated[dict,Depends(validate_token)],respo
             response.status_code = status.HTTP_400_BAD_REQUEST
             return {"message":"akun di role ini tidak ditemukan"}
 
-        query = db.execute(stmt)
+        db.execute(stmt)
+        db.commit()
 
     except Exception as e:
         print(f"ERROR : {e}")
         response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
         return {"message":"error pada sambungan database"}
     
-    return {"messsage": "file berhasil dikirimkan"}
+    return {"message": "file berhasil dikirimkan", "idLampiran": query[0]}
 
 @router.post("/upload/instansi",status_code=200)
 async def create_upload_file(user: Annotated[dict,Depends(validate_token)],response: Response,file: UploadFile, db:Session = Depends(get_db)):
@@ -264,12 +265,4 @@ async def create_upload_file(user: Annotated[dict,Depends(validate_token)],respo
         response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
         return {"message":"error pada sambungan database"}
 
-    try:
-        db.execute(update(Kegiatan).where(Kegiatan.idKegiatan==id).values(idLampiran=query2[0]))
-        db.commit()
-    except Exception as e:
-        print(f"ERROR : {e}")
-        response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
-        return {"message":"error pada sambungan database"}
-    
-    return {"messsage": "file berhasil dikirimkan","idLampiran":query2[0]}
+    return {"message": "file berhasil dikirimkan","idLampiran": query2[0]}

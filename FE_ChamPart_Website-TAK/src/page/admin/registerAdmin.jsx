@@ -1,20 +1,78 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 
 function RegisterAdmin() {
   const [role, setRole] = useState('Admin Instansi')
-  const [formData, setFormData] = useState({ username:'', email:'', password:'', jabatan:'', instansi:'' })
+  const [listInstansi, setListInstansi] = useState([])
+  const [formData, setFormData] = useState({ username:'', email:'', password:'', jabatan:'', idInstansi:'', passkey:'' })
+  const navigate = useNavigate()
+
+  useEffect(() => {
+    let cancelled = false
+    async function loadInstansi() {
+      try {
+        const token = localStorage.getItem('access_token') || ''
+        const headers = token ? { Authorization: `Bearer ${token}` } : {}
+        const res = await fetch('/api/instansi/get-all', { method: 'GET', headers })
+        let j = null
+        try { j = await res.json() } catch {}
+        const arr = Array.isArray(j?.data) ? j.data : []
+        const list = arr.map(it => ({ id: it.idInstansi, nama: it.nama }))
+        if (!cancelled) setListInstansi(list)
+      } catch (err) {
+        console.log(err)
+      }
+    }
+    loadInstansi()
+    return () => { cancelled = true }
+  }, [])
 
   const handleInputChange = (e) => {
     const { name, value } = e.target
     setFormData(prev => ({ ...prev, [name]: value }))
   }
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
-    if (!formData.username || !formData.email || !formData.password || !formData.jabatan) { alert('Lengkapi semua field wajib'); return }
-    if (role === 'Admin Instansi' && !formData.instansi) { alert('Field Instansi wajib untuk Admin Instansi'); return }
-    console.log('Register Admin', { role, ...formData })
-    alert(`Registrasi ${role} berhasil!\nUsername: ${formData.username}\nEmail: ${formData.email}\nJabatan: ${formData.jabatan}${role === 'Admin Instansi' ? `\nInstansi: ${formData.instansi}` : ''}`)
+    try {
+      if (!formData.username || !formData.email || !formData.password || !formData.jabatan) {
+        throw new Error('Semua field wajib diisi')
+      }
+      if (!formData.passkey || !formData.passkey.trim()) {
+        throw new Error('Passkey wajib diisi')
+      }
+      let body = null
+      if (role === 'Admin Pengawas') {
+        body = {
+          username: formData.username,
+          email: formData.email,
+          password: formData.password,
+          jabatan: formData.jabatan,
+          passkey: formData.passkey
+        }
+      } else {
+        const idNum = Number(formData.idInstansi)
+        if (!Number.isFinite(idNum) || idNum <= 0) throw new Error('Pilih instansi terlebih dahulu')
+        body = {
+          username: formData.username,
+          email: formData.email,
+          password: formData.password,
+          jabatan: formData.jabatan,
+          idInstansi: idNum,
+          passkey: formData.passkey
+        }
+      }
+      const url = role === 'Admin Pengawas' ? '/api/account/admin-pengawas/register' : '/api/account/admin-instansi/register'
+      const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+      let j = null
+      try { j = await res.json() } catch {}
+      if (!res.ok) throw new Error(j?.message || `HTTP ${res.status}`)
+      alert(j?.message || 'Berhasil mendaftar')
+      navigate('/login')
+    } catch (err) {
+      console.log(err)
+      alert(typeof err?.message === 'string' ? err.message : 'Gagal mendaftar')
+    }
   }
 
   return (
@@ -42,9 +100,25 @@ function RegisterAdmin() {
             <input type="password" name="password" placeholder="Password" value={formData.password} onChange={handleInputChange} className="w-full px-4 py-3 border-2 border-gray-800 rounded-xl focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-200 transition-all placeholder-gray-500 text-gray-900" />
             <input type="text" name="jabatan" placeholder="Jabatan" value={formData.jabatan} onChange={handleInputChange} className="w-full px-4 py-3 border-2 border-gray-800 rounded-xl focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-200 transition-all placeholder-gray-500 text-gray-900" />
             {role==='Admin Instansi' && (
-              <input type="text" name="instansi" placeholder="Instansi" value={formData.instansi} onChange={handleInputChange} className="w-full px-4 py-3 border-2 border-gray-800 rounded-xl focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-200 transition-all placeholder-gray-500 text-gray-900" />
+              <select name="idInstansi" value={formData.idInstansi} onChange={handleInputChange} className="w-full px-4 py-3 border-2 border-gray-800 rounded-xl focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-200 transition-all text-gray-900">
+                <option value="">Pilih Instansi</option>
+                {listInstansi.map(it => (
+                  <option key={it.id} value={it.id}>{it.nama}</option>
+                ))}
+              </select>
             )}
+            <input type="text" name="passkey" placeholder="Passkey" value={formData.passkey} onChange={handleInputChange} className="w-full px-4 py-3 border-2 border-gray-800 rounded-xl focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-200 transition-all placeholder-gray-500 text-gray-900" />
             <button type="submit" className="w-full mt-2 px-4 py-3 bg-blue-900 hover:bg-blue-800 text-white font-semibold rounded-xl transition-colors duration-200">Continue</button>
+             <div className="mt-4 text-center">
+              {role === 'Admin Instansi' && (
+              <><p className="text-gray-600">
+                Want to register your Instance?{' '}
+                <a href="/instansi/register" className="text-blue-900 font-semibold hover:underline">
+                  Register Instance
+                </a>
+              </p></>
+            )}
+             </div>
           </form>
         </div>
       </div>

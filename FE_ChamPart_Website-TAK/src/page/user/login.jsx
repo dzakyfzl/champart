@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 function Login({ setToken }) {
   const [name, setName] = useState('')
   const [password, setPassword] = useState('')
+  const [role, setRole] = useState('')
   const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
 
@@ -19,7 +20,7 @@ function Login({ setToken }) {
         body: JSON.stringify({
           username: name,      
           password: password,
-          role: "Pengguna"      
+          role: role      
         })
       })
       const data = await res.json()
@@ -31,9 +32,16 @@ function Login({ setToken }) {
 
       localStorage.setItem("access_token", data.access_token)
       localStorage.setItem("refresh_token", data.refresh_token)
+      localStorage.setItem("user_role", data.role || role)
       setToken(data.access_token)
       console.log("Login Success", data)
-      navigate("/", { replace: true })                        
+      if (role === "AdminPengawas") {
+        navigate("/admin/pengawas", { replace: true })
+      } else if (role === "AdminInstansi") {
+        navigate("/admin/instansi", { replace: true })
+      } else if (role === "Pengguna") {
+        navigate("/", { replace: true })
+      }
     } catch (error) {
       console.error("Error login:", error)
       alert("Gagal terhubung ke server")
@@ -41,7 +49,6 @@ function Login({ setToken }) {
       setLoading(false)
     }
   }
-
 
   return (
     <div className="relative min-h-screen flex items-center justify-center overflow-hidden">
@@ -85,6 +92,19 @@ function Login({ setToken }) {
                 className="w-full px-4 py-3 border-2 border-gray-800 rounded-xl text-gray-900 placeholder-gray-600 focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-200 transition-all"
               />
             </div>
+            <div>
+              <select
+                value={role}
+                onChange={(e) => setRole(e.target.value)}
+                required
+                className="w-full px-4 py-3 border-2 border-gray-800 rounded-xl text-gray-900 placeholder-gray-600 focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-200 transition-all"
+              >
+                <option value="">Select Role</option>
+                <option value="AdminInstansi">Admin Instansi</option>
+                <option value="AdminPengawas">Admin Pengawas</option>
+                <option value="Pengguna">Pengguna</option>
+              </select>
+            </div>
             <button
               type="submit"
               disabled={loading}
@@ -93,6 +113,14 @@ function Login({ setToken }) {
               {loading ? 'Loading...' : 'Continue'}
             </button>
           </form>
+          <div className="mt-4 text-center">
+            <p className="text-gray-600">
+              Don't have an account?{' '}
+              <a href="/register" className="text-blue-900 font-semibold hover:underline">
+                Register
+              </a>
+            </p>
+          </div>
         </div>
       </div>
     </div>

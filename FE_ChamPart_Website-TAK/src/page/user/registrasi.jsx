@@ -59,8 +59,6 @@ function Registrasi() {
     alert("Tidak dapat terhubung ke server")
   }
 }
-
-
   const faculties = Object.keys(majorData)
 
   return (
@@ -94,6 +92,14 @@ function Registrasi() {
             type="submit" 
             className="w-full mt-6 px-4 py-3 bg-blue-900 hover:bg-blue-800 text-white font-semibold rounded-xl transition-colors duration-200">Continue</button>
           </form>
+          <div className="mt-4 text-center">
+            <p className="text-gray-600">
+              Already have an account?{' '}
+              <a href="/login" className="text-blue-900 font-semibold hover:underline">
+                Login
+              </a>
+            </p>
+          </div>
         </div>
       </div>
     </div>

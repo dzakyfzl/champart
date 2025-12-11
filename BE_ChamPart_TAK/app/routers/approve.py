@@ -39,10 +39,11 @@ def approve_pendaftaran_instansi(request: JSONApproveInstansi,user: Annotated[di
         return {"message": "calon instansi tidak ditemukan"}
 
     calon_instansi = query
+    message = None
 
     if request.isApproved:
         try:
-            db.execute(
+            res = db.execute(
                 insert(Instansi).values(
                     nama=calon_instansi[0],
                     jenis=calon_instansi[1],
@@ -54,9 +55,32 @@ def approve_pendaftaran_instansi(request: JSONApproveInstansi,user: Annotated[di
             print(f"ERROR : {e}")
             response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
             return {"message": "gagal membuat instansi baru"}
-        return {"message": "instansi baru berhasil diapprove dan dibuat"}
+        new_id = None
+        try:
+            new_id = res.lastrowid
+        except Exception:
+            try:
+                new_id = res.inserted_primary_key[0]
+            except Exception:
+                new_id = None
+        message = {"message": "instansi baru berhasil diapprove dan dibuat", "idInstansi": new_id}
     else:
-        return {"message": "pengajuan tidak diapprove"}
+        message = {"message": "pengajuan tidak diapprove"}
+    try:
+        db.execute(delete(CalonInstansi).where(CalonInstansi.idCalonInstansi==request.idCalonInstansi))
+    except Exception as e:
+        print(f"ERROR : {e}")
+        response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
+        return {"message":"error pada sambungan database"}
+
+    try:
+        db.commit()
+    except Exception as e:
+        print(f"ERROR : {e}")
+        response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
+        return {"message":"error pada sambungan database"}
+    
+    return message
 
 
 @router.post('/instansi/edit',status_code=200)
@@ -81,6 +105,7 @@ def approve_pendaftaran_instansi(request: JSONApproveInstansi,user: Annotated[di
         try:
             query2 = db.execute(select(AdminInstansi.idInstansi).where(AdminInstansi.email==query[3])).first()
             db.execute(update(Instansi).where(Instansi.idInstansi==query2[0]).values(nama=query[0],jenis=query[1],alamat=query[2]))
+            message = {"message":f"Pengajuan edit Instansi {query[0]} berhasil di approve","idInstansi":query2[0]}
         except Exception as e:
             print(f"ERROR : {e}")
             response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
@@ -127,7 +152,7 @@ def approve_pendaftaran_admin_instansi(request: JSONApproveAdmin,bg_tasks:Backgr
         hashed_passkey = generate_pass(request.unique_character,request.email,query[0])
 
         try:
-            db.execute(insert(Passkey).values(isiPasskey=hashed_passkey,idInstansi=request.idInstansi))
+            db.execute(insert(Passkey).values(isiPasskey=hashed_passkey,idInstansi=request.idInstansi,email=request.email))
         except Exception as e:
             print(f"ERROR : {e}")
             response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR

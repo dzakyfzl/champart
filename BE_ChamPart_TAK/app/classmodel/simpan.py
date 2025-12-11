@@ -8,6 +8,7 @@ class JSONSimpanRequest(BaseModel):
 class JSONSimpanResponse(BaseModel):
     idKegiatan: int
     nama_kegiatan: str
+    jenis: str
     deskripsi: str
     waktu_kegiatan: datetime
     nominal_TAK: int

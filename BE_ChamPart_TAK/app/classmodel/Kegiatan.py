@@ -7,6 +7,7 @@ from .Lampiran import JSONLampiran
 
 class KegiatanBase(BaseModel):
     nama: str
+    jenis: str
     deskripsi: str
     waktu: datetime
     nominal_TAK: int
@@ -17,6 +18,7 @@ class KegiatanBase(BaseModel):
 class JSONKegiatanCard(BaseModel):
     idKegiatan: int
     nama: str
+    jenis: str
     nama_instansi: str
     TAK_wajib: bool
     waktu: datetime
@@ -36,6 +38,7 @@ class JSONKegiatanCreate(KegiatanBase):
 
 class JSONKegiatanUpdate(BaseModel):
     nama: Optional[str] = None
+    jenis: Optional[str] = None
     deskripsi: Optional[str] = None
     waktu: Optional[datetime] = None
     nominal_TAK: Optional[int] = None
@@ -69,6 +72,7 @@ class JSONChangeStatus(BaseModel):
 class JSONKegiatanDetail(BaseModel):
     idKegiatan: int
     nama: str
+    jenis: str
     deskripsi: str
     waktu: datetime
     nominal_TAK: int

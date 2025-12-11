@@ -15,7 +15,7 @@ function Profile() {
     if (!(file.type || '').startsWith('image/')) { setError('File harus gambar'); return }
     if (file.size > 2 * 1024 * 1024) { setError('Maksimal ukuran 2MB'); return }
     const reader = new FileReader()
-    reader.onload = () => { setAvatar(reader.result); setError('') }
+    reader.onload = () => { setAvatar(reader.result); setError(''); setAvatarFile(file) }
     reader.readAsDataURL(file)
   }
   const [username, setUsername] = useState('')
@@ -25,7 +25,6 @@ function Profile() {
   const [prodi, setProdi] = useState('')
   const token = localStorage.getItem('access_token')
 
-   // Minat & Bakat
   const [minatList, setMinatList] = useState([])
   const [bakatList, setBakatList] = useState([])
 
@@ -34,9 +33,18 @@ function Profile() {
 
   const [minatPengguna, setMinatPengguna] = useState([])
   const [bakatPengguna, setBakatPengguna] = useState([])
+  const [avatarFile, setAvatarFile] = useState(null)
+  const [original, setOriginal] = useState(null)
 
-  const [minatInput, setMinatInput] = useState("")
-  const [bakatInput, setBakatInput] = useState("")
+  const loadAvatar = async (id) => {
+    try {
+      const res = await fetch(`/api/file/get/${id}`, { headers: { 'Authorization': `Bearer ${token}` } })
+      if (!res.ok) return
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      setAvatar(url)
+    } catch {}
+  }
   
   const updateMinat = (index, value) => {
     const updated = [...selectedMinat]
@@ -44,7 +52,6 @@ function Profile() {
     setSelectedMinat(updated)
   }
 
-  // 🔄 UPDATE BAKAT
   const updateBakat = (index, value) => {
     const updated = [...selectedBakat]
     updated[index] = value
@@ -68,40 +75,56 @@ function Profile() {
         setNo_telp(result.no_telp)
         setFakultas(result.fakultas)
         setProdi(result.prodi)
+        if (result.idLampiran) {
+          await loadAvatar(result.idLampiran)
+        }
 
-        // MINAT PENGGUNA
         const resMinat = await fetch("/api/minat/pengguna", {
           headers: { "Authorization": `Bearer ${token}` }
         })
         const dataMinat = await resMinat.json()
+        let selMin = ["", "", ""]
         if (resMinat.ok) {
           setMinatList(dataMinat.minat)
-          setSelectedMinat(dataMinat.minat.map(m => m.idMinat))
+          const arr = dataMinat.minat.map(m => m.idMinat)
+          selMin = [arr[0] ?? "", arr[1] ?? "", arr[2] ?? ""]
+          setSelectedMinat(selMin)
         }
 
-        // BAKAT PENGGUNA
         const resBakat = await fetch("/api/bakat/pengguna", {
           headers: { "Authorization": `Bearer ${token}` }
         })
         const dataBakat = await resBakat.json()
+        let selB = ["", "", ""]
         if (resBakat.ok) {
           setBakatList(dataBakat.bakat)
-          setSelectedBakat(dataBakat.bakat.map(b => b.idBakat))
+          const arrB = dataBakat.bakat.map(b => b.idBakat)
+          selB = [arrB[0] ?? "", arrB[1] ?? "", arrB[2] ?? ""]
+          setSelectedBakat(selB)
         }
 
-        // SEMUA LIST MINAT
-        const resAllMinat = await fetch("/api/minat", {
+        const resAllMinat = await fetch("/api/minat/all", {
           headers: { "Authorization": `Bearer ${token}` }
         })
         const allMinat = await resAllMinat.json()
-        setMinatPengguna(allMinat.data)
+        setMinatPengguna(resAllMinat.ok && Array.isArray(allMinat.data) ? allMinat.data : [])
 
-        // SEMUA LIST BAKAT
-        const resAllBakat = await fetch("/api/bakat", {
+        const resAllBakat = await fetch("/api/bakat/all", {
           headers: { "Authorization": `Bearer ${token}` }
         })
         const allBakat = await resAllBakat.json()
-        setBakatPengguna(allBakat.data)
+        setBakatPengguna(resAllBakat.ok && Array.isArray(allBakat.data) ? allBakat.data : [])
+
+        setOriginal({
+          username: result.username,
+          email: result.email,
+          no_telp: result.no_telp,
+          fakultas: result.fakultas,
+          prodi: result.prodi,
+          selectedMinat: selMin,
+          selectedBakat: selB,
+          avatarId: result.idLampiran || null,
+        })
 
       } catch (error) {
         alert("Gagal mengambil data profil: " + error.message)
@@ -110,9 +133,11 @@ function Profile() {
     fetchData()
   }, [token])
 
+  
+
   const handleEditPengguna = async () => {
-  try {
-    const res = await fetch("/api/account/pengguna/edit", {
+    try {
+      const res = await fetch("/api/account/pengguna/edit", {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${token}`,
@@ -140,7 +165,33 @@ function Profile() {
       localStorage.setItem("refresh_token", data.refresh_token);
       console.log("Refresh token diperbarui");
     }
-      alert("Profil berhasil diperbarui")
+
+      const minat_ids = Array.from(new Set(selectedMinat.filter(Boolean).map((v)=>Number(v))))
+      const bakat_ids = Array.from(new Set(selectedBakat.filter(Boolean).map((v)=>Number(v))))
+
+      const tasks = []
+      tasks.push(fetch("/api/minat/pengguna", { method: "PUT", headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" }, body: JSON.stringify({ minat_id: minat_ids }) }))
+      tasks.push(fetch("/api/bakat/pengguna", { method: "PUT", headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" }, body: JSON.stringify({ bakat_id: bakat_ids }) }))
+      if (avatarFile) {
+        const fd = new FormData()
+        fd.append('file', avatarFile)
+        tasks.push(fetch('/api/file/upload/account', { method: 'POST', headers: { 'Authorization': `Bearer ${token}` }, body: fd }))
+      }
+
+      const responses = await Promise.all(tasks)
+      const dataMinatPut = await responses[0].json()
+      const dataBakatPut = await responses[1].json()
+      if (!responses[0].ok) return alert("Gagal memperbarui minat: " + (dataMinatPut.message || ""))
+      if (!responses[1].ok) return alert("Gagal memperbarui bakat: " + (dataBakatPut.message || ""))
+      if (avatarFile) {
+        const dataUpload = await responses[2].json()
+        if (!responses[2].ok) return alert('Gagal upload foto: ' + (dataUpload.message || ''))
+        if (dataUpload.idLampiran) {
+          await loadAvatar(dataUpload.idLampiran)
+        }
+      }
+
+      alert("Profil, minat, dan bakat berhasil diperbarui")
       window.location.reload();
       setShowPassModal(false)
       setIsEditing(false)
@@ -150,64 +201,24 @@ function Profile() {
     }
   }
 
-  const handleTambahMinat = async () => {
-    if (!minatInput) return alert("Isi ID minat terlebih dahulu")
-
-    try {
-      const res = await fetch("/api/minat/pengguna", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${token}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ minat_id: [parseInt(minatInput)] })
-      })
-
-      const data = await res.json()
-      if (!res.ok) return alert("Gagal menambah minat: " + data.message)
-
-      const re = await fetch("/api/minat/pengguna", {
-        headers: { "Authorization": `Bearer ${token}` }
-      })
-      const fresh = await re.json()
-
-      setMinatList(fresh.minat)
-      setSelectedMinat(fresh.minat.map(m => m.idMinat))
-
-      setMinatInput("")
-
-    } catch (err) {
-      alert(err.message)
-    }
-  }
-
-  const handleTambahBakat = async () => {
-    if (!bakatInput) return alert("Isi ID bakat terlebih dahulu")
-
-    try {
-      const res = await fetch("/api/bakat/pengguna", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${token}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ bakat_id: [parseInt(bakatInput)] })
-      })
-
-      const data = await res.json()
-      if (!res.ok) return alert("Gagal menambah bakat: " + data.message)
-
-      const re = await fetch("/api/bakat/pengguna", {
-        headers: { "Authorization": `Bearer ${token}` }
-      })
-      const fresh = await re.json()
-
-      setBakatList(fresh.bakat)
-      setSelectedBakat(fresh.bakat.map(b => b.idBakat))
-
-      setBakatInput("")
-      } catch (err) {
-      alert(err.message)
+  const handleCancelEdit = async () => {
+    setIsEditing(false)
+    setError("")
+    setAvatar("")
+    setAvatarFile(null)
+    setDragOver(false)
+    setConfirmPassword("")
+    if (original) {
+      setUsername(original.username)
+      setEmail(original.email)
+      setNo_telp(original.no_telp)
+      setFakultas(original.fakultas)
+      setProdi(original.prodi)
+      setSelectedMinat(original.selectedMinat)
+      setSelectedBakat(original.selectedBakat)
+      if (original.avatarId) {
+        await loadAvatar(original.avatarId)
+      }
     }
   }
 
@@ -257,6 +268,7 @@ function Profile() {
             </div>
           </div>
           <div className="w-full">
+            {isEditing ? (
               <div
                 onDragOver={(e)=>{e.preventDefault(); setDragOver(true)}}
                 onDragLeave={()=>setDragOver(false)}
@@ -275,26 +287,41 @@ function Profile() {
                   />
                   <label htmlFor="avatar-input" className="px-4 py-2 rounded-md bg-[#ACE2E1] text-gray-900 border border-gray-300 cursor-pointer hover:bg-[#6DD5D3]">Pilih File</label>
                   {avatar && (
-                    <button type="button" onClick={()=>setAvatar('')} className="px-4 py-2 rounded-md border">Hapus</button>
+                    <button type="button" onClick={()=>{ setAvatar(''); setAvatarFile(null) }} className="px-4 py-2 rounded-md border">Hapus</button>
                   )}
                 </div>
                 {error && <div className="mt-3 text-sm text-red-600">{error}</div>}
               </div>
+            ) : (
+              <div className="border-2 border-dashed border-gray-300 rounded-md px-4 py-6 text-center text-sm text-gray-600">Klik Edit untuk mengubah foto</div>
+            )}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-5">
             <div className="space-y-4 pr-4">
               <label className="block">
                 <div className="text-sm font-medium mb-1">Nama</div>
-                <input type="text" value={username} onChange={(e)=>setUsername(e.target.value)} className="w-full rounded-md border border-gray-300 px-3 py-2" />
+                {isEditing ? (
+                  <input type="text" value={username} onChange={(e)=>setUsername(e.target.value)} className="w-full rounded-md border border-gray-300 px-3 py-2" />
+                ) : (
+                  <input type="text" value={username} disabled className="w-full rounded-md border border-gray-300 px-3 py-2 bg-gray-200" />
+                )}
               </label>
               <label className="block">
                 <div className="text-sm font-medium mb-1">Email</div>
-                <input type="email" value={email} onChange={(e)=>setEmail(e.target.value)} className="w-full rounded-md border border-gray-300 px-3 py-2" />
+                {isEditing ? (
+                  <input type="email" value={email} onChange={(e)=>setEmail(e.target.value)} className="w-full rounded-md border border-gray-300 px-3 py-2" />
+                ) : (
+                  <input type="email" value={email} disabled className="w-full rounded-md border border-gray-300 px-3 py-2 bg-gray-200" />
+                )}
               </label>
               <label className="block">
                 <div className="text-sm font-medium mb-1">Nomor Telepon</div>
-                <input type="tel" value={no_telp} onChange={(e)=>setNo_telp(e.target.value)} className="w-full rounded-md border border-gray-300 px-3 py-2" />
+                {isEditing ? (
+                  <input type="tel" value={no_telp} onChange={(e)=>setNo_telp(e.target.value)} className="w-full rounded-md border border-gray-300 px-3 py-2" />
+                ) : (
+                  <input type="tel" value={no_telp} disabled className="w-full rounded-md border border-gray-300 px-3 py-2 bg-gray-200" />
+                )}
               </label>
               <label className="block">
                 <div className="text-sm font-medium mb-1">Fakultas</div>
@@ -326,55 +353,52 @@ function Profile() {
             </div>
 
             <div className="space-y-6">
-  {/* MINAT */}
-  <div className="space-y-3">
-    <div className="text-sm font-semibold">Minat Pengguna</div>
+              <div className="space-y-3">
+                <div className="text-sm font-semibold">Minat Pengguna</div>
+                {selectedMinat.map((val, index) => (
+                  <label key={index} className="block">
+                    <select
+                      className="w-full rounded-md border border-gray-300 px-3 py-2"
+                      disabled={!isEditing}
+                      value={val}
+                      onChange={(e) => updateMinat(index, e.target.value)}
+                    >
+                      <option value="">Pilih…</option>
+                      {minatPengguna.map((m) => (
+                        <option key={m.idMinat} value={m.idMinat}>
+                          {m.nama}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                ))}
+              </div>
 
-    {selectedMinat.map((val, index) => (
-      <label key={index} className="block">
-        <select
-          className="w-full rounded-md border border-gray-300 px-3 py-2"
-          value={val}
-          onChange={(e) => updateMinat(index, e.target.value)}
-        >
-          <option value="">Pilih…</option>
+              <div className="space-y-3">
+                <div className="text-sm font-semibold">Bakat Pengguna</div>
+                {selectedBakat.map((val, index) => (
+                  <label key={index} className="block">
+                    <select
+                      className="w-full rounded-md border border-gray-300 px-3 py-2"
+                      disabled={!isEditing}
+                      value={val}
+                      onChange={(e) => updateBakat(index, e.target.value)}
+                    >
+                      <option value="">Pilih…</option>
 
-          {minatPengguna.map((m) => (
-            <option key={m.idMinat} value={m.idMinat}>
-              {m.nama}
-            </option>
-          ))}
-        </select>
-      </label>
-    ))}
-  </div>
-
-  {/* BAKAT */}
-  <div className="space-y-3">
-    <div className="text-sm font-semibold">Bakat Pengguna</div>
-
-    {selectedBakat.map((val, index) => (
-      <label key={index} className="block">
-        <select
-          className="w-full rounded-md border border-gray-300 px-3 py-2"
-          value={val}
-          onChange={(e) => updateBakat(index, e.target.value)}
-        >
-          <option value="">Pilih…</option>
-
-          {bakatPengguna.map((b) => (
-            <option key={b.idBakat} value={b.idBakat}>
-              {b.nama}
-            </option>
-          ))}
-        </select>
-      </label>
-    ))}
-  </div>
-</div>
+                      {bakatPengguna.map((b) => (
+                        <option key={b.idBakat} value={b.idBakat}>
+                          {b.nama}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
-        <div className="ml-10 pt-5">
+        <div className="ml-10 pt-5 flex gap-4">
           <button
             type="button"
             onClick={()=>{
@@ -385,6 +409,15 @@ function Profile() {
           >
             {isEditing ? "Save" : "Edit"}
           </button>
+          {isEditing && (
+            <button
+              type="button"
+              onClick={handleCancelEdit}
+              className="px-6 py-2.5 rounded-md bg-red-200 text-gray-900 border border-gray-300 hover:bg-red-300"
+            >
+              Cancel
+            </button>
+          )}
         </div>
       </section>
       {showPassModal && (
@@ -409,3 +442,4 @@ function Profile() {
   )
 }
 export default Profile
+  

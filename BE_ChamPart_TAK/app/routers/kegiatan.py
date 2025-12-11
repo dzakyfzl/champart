@@ -41,6 +41,7 @@ def get_all_kegiatan(
         data.append({
             "idKegiatan": k.idKegiatan,
             "nama": k.nama,
+            "jenis": k.jenis,
             "nama_instansi": k.instansi.nama,
             "TAK_wajib": k.TAK_wajib,
             "waktu": k.waktu,
@@ -77,9 +78,24 @@ def upload_kegiatan(request: JSONKegiatanCreate, user: Annotated[dict, Depends(v
     # tentukan idAdminPengawas: gunakan dari request jika ada, atau pilih salah satu admin pengawas yang tersedia
     # Admin pengawas hanya pada saat approval, tidak bisa pilih salah satu
 
-    # parse waktu
     try:
-        waktu_dt = datetime.fromisoformat(request.waktu)
+        w = request.waktu
+        if isinstance(w, datetime):
+            waktu_dt = w
+        else:
+            s = str(w).strip()
+            if not s:
+                raise ValueError("empty waktu")
+            if s.endswith("Z"):
+                s = s[:-1] + "+00:00"
+            if len(s) == 10 and s[4] == '-' and s[7] == '-':
+                s = f"{s}T00:00:00"
+            if 'T' in s:
+                parts = s.split('T')
+                time = parts[1]
+                if time and len(time) == 5 and time[2] == ':':
+                    s = f"{parts[0]}T{time}:00"
+            waktu_dt = datetime.fromisoformat(s)
     except Exception:
         response.status_code = status.HTTP_400_BAD_REQUEST
         return {"message":"format waktu salah, gunakan ISO datetime"}
@@ -88,6 +104,7 @@ def upload_kegiatan(request: JSONKegiatanCreate, user: Annotated[dict, Depends(v
     try:
         db.execute(insert(Kegiatan).values(
             nama=request.nama,
+            jenis=request.jenis,
             deskripsi=request.deskripsi,
             waktu=waktu_dt,
             nominal_TAK=request.nominal_TAK,
@@ -111,6 +128,7 @@ def serialize_kegiatan(obj: Kegiatan) -> dict:
     return {
         "idKegiatan": obj.idKegiatan,
         "nama": obj.nama,
+        "jenis": obj.jenis,
         "deskripsi": obj.deskripsi,
         "waktu": obj.waktu.isoformat() if obj.waktu else None,
         "nominal_TAK": obj.nominal_TAK,
@@ -121,7 +139,7 @@ def serialize_kegiatan(obj: Kegiatan) -> dict:
         "idAdminInstansi": obj.idAdminInstansi,
         "idInstansi": obj.idInstansi,
         "idLampiran": obj.idLampiran
-    }    
+    }
 
 @router.post('/edit/{id}',status_code=200)
 def edit_kegiatan(id: int, request: JSONKegiatanUpdate, user: Annotated[dict, Depends(validate_token)], response: Response, db: Session = Depends(get_db)):
@@ -154,7 +172,7 @@ def edit_kegiatan(id: int, request: JSONKegiatanUpdate, user: Annotated[dict, De
         return {"message":"kegiatan tidak ditemukan atau bukan milik anda"}
 
     try:
-        waktu_dt = datetime.fromisoformat(request.waktu)
+        waktu_dt = None if request.waktu is None else (request.waktu if isinstance(request.waktu, datetime) else datetime.fromisoformat(str(request.waktu)))
     except Exception:
         response.status_code = status.HTTP_400_BAD_REQUEST
         return {"message":"format waktu salah, gunakan ISO datetime"}
@@ -163,14 +181,16 @@ def edit_kegiatan(id: int, request: JSONKegiatanUpdate, user: Annotated[dict, De
         db.execute(text("""
             UPDATE Kegiatan SET
                 nama = :nama,
+                jenis = COALESCE(:jenis, jenis),
                 deskripsi = :deskripsi,
-                waktu = :waktu,
+                waktu = COALESCE(:waktu, waktu),
                 nominal_TAK = :nominal_TAK,
                 TAK_wajib = :TAK_wajib,
                 idLampiran = :idLampiran
             WHERE idKegiatan = :id
         """), {
             "nama": request.nama,
+            "jenis": request.jenis,
             "deskripsi": request.deskripsi,
             "waktu": waktu_dt,
             "nominal_TAK": request.nominal_TAK,
@@ -303,6 +323,7 @@ def filter_search_kegiatan(
         data.append({
             "idKegiatan": k.idKegiatan,
             "nama": k.nama,
+            "jenis": k.jenis,
             "nama_instansi": k.instansi.nama,
             "TAK_wajib": k.TAK_wajib,
             "waktu": k.waktu,
@@ -400,6 +421,7 @@ def get_fyp_kegiatan(
         data.append({
             "idKegiatan": k.idKegiatan,
             "nama": k.nama,
+            "jenis": k.jenis,
             "nama_instansi": k.instansi.nama,
             "TAK_wajib": k.TAK_wajib,
             "waktu": k.waktu,
@@ -435,6 +457,7 @@ def get_detail_kegiatan(
         return {
             "idKegiatan": kegiatan.idKegiatan,
             "nama": kegiatan.nama,
+            "jenis": kegiatan.jenis,
             "deskripsi": kegiatan.deskripsi,
             "waktu": kegiatan.waktu,
             "nominal_TAK": kegiatan.nominal_TAK,

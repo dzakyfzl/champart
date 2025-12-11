@@ -11,6 +11,91 @@ from ..depedency import validate_token
 
 router = APIRouter(prefix="/minat", tags=["Minat"])
 
+@router.put("/pengguna", status_code=200)
+def ganti_minat_pengguna(
+    request: JSONMinatRequest,
+    user: Annotated[dict, Depends(validate_token)],
+    db: Session = Depends(get_db)
+):
+    if user["role"] != "Pengguna":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Hanya pengguna yang dapat menggunakan endpoint ini"
+        )
+
+    try:
+        query_id = db.execute(
+            select(Pengguna.idPengguna)
+            .where(Pengguna.username == user["username"])
+        ).first()
+    except Exception as e:
+        print(f"ERROR : {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error pada sambungan database"
+        )
+
+    if not query_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Pengguna tidak ditemukan"
+        )
+
+    id_pengguna = query_id[0]
+
+    # validasi tipe id
+    for minat_id in request.minat_id:
+        if type(minat_id) is not int:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Format input salah, ID harus berupa integer"
+            )
+
+    # validasi id minat ada di tabel Minat
+    if request.minat_id:
+        try:
+            existing_minat = db.execute(
+                select(Minat.idMinat)
+                .where(Minat.idMinat.in_(request.minat_id))
+            ).all()
+            existing_ids = [m[0] for m in existing_minat]
+            invalid_ids = [mid for mid in request.minat_id if mid not in existing_ids]
+            if invalid_ids:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Minat dengan ID {invalid_ids} tidak ditemukan"
+                )
+        except HTTPException:
+            raise
+        except Exception as e:
+            print(f"ERROR : {e}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Error validasi minat"
+            )
+
+    try:
+        # hapus semua minat pengguna saat ini
+        db.execute(
+            delete(minatPengguna).where(minatPengguna.c.idPengguna == id_pengguna)
+        )
+
+        # jika ada daftar baru, masukkan
+        if request.minat_id:
+            data = [{"idPengguna": id_pengguna, "idMinat": mid} for mid in request.minat_id]
+            db.execute(insert(minatPengguna).values(data))
+
+        db.commit()
+    except Exception as e:
+        print(f"ERROR : {e}")
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error mengganti minat"
+        )
+
+    return {"message": "Minat pengguna berhasil diperbarui"}
+
 @router.post("/pengguna", status_code=200)
 def tambah_minat_pengguna(
     request: JSONMinatRequest,

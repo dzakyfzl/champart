@@ -70,6 +70,7 @@ CREATE TABLE AdminPengawas(
 CREATE TABLE Kegiatan(
     idKegiatan INT PRIMARY KEY AUTO_INCREMENT,
     nama VARCHAR(100) NOT NULL,
+    jenis VARCHAR(50) NOT NULL,
     deskripsi TEXT NOT NULL,
     waktu DATETIME NOT NULL,
     nominal_TAK INT NOT NULL,

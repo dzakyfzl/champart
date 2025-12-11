@@ -63,11 +63,11 @@ def ajukan_edit_instansi(instansi:JSONCalonInstansi,response:Response,user: Anno
     return {"message":"instansi berhasil diajukan,tunggu hingga diapprove"}
 
 @router.get("/get-all",status_code=200)
-def data_semua_instansi(response:Response,user: Annotated[dict, Depends(validate_token)],db:Session = Depends(get_db)):
+def data_semua_instansi(response:Response, db:Session = Depends(get_db)):
     query = None
     data = []
     try:
-        query = db.execute(select(Instansi.nama,Instansi.alamat,Instansi.jenis)).all()
+        query = db.execute(select(Instansi.idInstansi,Instansi.nama,Instansi.alamat,Instansi.jenis)).all()
     except Exception as e:
         print(f"ERROR : {e}")
         response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
@@ -75,6 +75,6 @@ def data_semua_instansi(response:Response,user: Annotated[dict, Depends(validate
     if not query:
         return{"message":"Instansi kosong"}
     for q in query:
-        data.append({"nama":q[0],"alamat":q[1],"jenis":q[2]})
+        data.append({"idInstansi":q[0],"nama":q[1],"alamat":q[2],"jenis":q[3]})
 
     return {"message":"data instansi berhasil diperoleh", "data":data}

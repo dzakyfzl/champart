@@ -86,11 +86,11 @@ def info_akun(response:Response, user: Annotated[dict, Depends(validate_token)],
     query2=None
     try:
         if user["role"] == "Pengguna":
-            query = db.execute(select(Pengguna.email,Pengguna.no_telp,Pengguna.fakultas,Pengguna.prodi).select_from(Pengguna).where(Pengguna.username==user['username'])).first()
+            query = db.execute(select(Pengguna.email,Pengguna.no_telp,Pengguna.fakultas,Pengguna.prodi,Pengguna.idLampiran).select_from(Pengguna).where(Pengguna.username==user['username'])).first()
         elif user["role"] == "AdminPengawas":
-            query = db.execute(select(AdminPengawas.email,AdminPengawas.jabatan).select_from(AdminPengawas).where(AdminPengawas.username==user['username'])).first()
+            query = db.execute(select(AdminPengawas.email,AdminPengawas.jabatan,AdminPengawas.idLampiran).select_from(AdminPengawas).where(AdminPengawas.username==user['username'])).first()
         elif user["role"] == "AdminInstansi":
-            query = db.execute(select(AdminInstansi.email,AdminInstansi.jabatan,AdminInstansi.idInstansi).select_from(AdminInstansi).where(AdminInstansi.username==user['username'])).first()
+            query = db.execute(select(AdminInstansi.email,AdminInstansi.jabatan,AdminInstansi.idInstansi,AdminInstansi.idLampiran).select_from(AdminInstansi).where(AdminInstansi.username==user['username'])).first()
             query2 = db.execute(select(Instansi.nama).select_from(Instansi).where(Instansi.idInstansi==query[2])).first()
         else:
             response.status_code = status.HTTP_400_BAD_REQUEST,
@@ -105,11 +105,11 @@ def info_akun(response:Response, user: Annotated[dict, Depends(validate_token)],
         return {"message":"user tidak ditemukan"}
     
     if user["role"] == "Pengguna":
-        return {"username":user["username"],"email":query[0],"no_telp":query[1],"fakultas":query[2],"prodi":query[3]}
+        return {"username":user["username"],"email":query[0],"no_telp":query[1],"fakultas":query[2],"prodi":query[3],"idLampiran":query[4]}
     elif user["role"] == "AdminPengawas":
-        return {"username":user["username"],"email":query[0],"jabatan":query[1]}
+        return {"username":user["username"],"email":query[0],"jabatan":query[1],"idLampiran":query[2]}
     elif user["role"] == "AdminInstansi":
-        return {"username":user["username"],"email":query[0],"jabatan":query[1],"nama_instansi":query2[0]}
+        return {"username":user["username"],"email":query[0],"jabatan":query[1],"nama_instansi":query2[0],"idLampiran":query[3]}
     else:
         response.status_code = status.HTTP_400_BAD_REQUEST
         return {"message":"role tidak valid"}

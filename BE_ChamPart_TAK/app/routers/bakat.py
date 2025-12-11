@@ -11,6 +11,85 @@ from ..depedency import validate_token
 
 router = APIRouter(prefix="/bakat", tags=["Bakat"])
 
+@router.put("/pengguna", status_code=200)
+def ganti_bakat_pengguna(
+    request: JSONBakatRequest,
+    user: Annotated[dict, Depends(validate_token)],
+    db: Session = Depends(get_db)
+):
+    if user["role"] != "Pengguna":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Hanya pengguna yang dapat menggunakan endpoint ini"
+        )
+
+    try:
+        query_id = db.execute(
+            select(Pengguna.idPengguna)
+            .where(Pengguna.username == user["username"])
+        ).first()
+    except Exception as e:
+        print(f"ERROR : {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error pada sambungan database"
+        )
+
+    if not query_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Pengguna tidak ditemukan"
+        )
+
+    id_pengguna = query_id[0]
+
+    for bakat_id in request.bakat_id:
+        if type(bakat_id) is not int:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Format input salah, ID harus berupa integer"
+            )
+
+    if request.bakat_id:
+        try:
+            existing_bakat = db.execute(
+                select(Bakat.idBakat)
+                .where(Bakat.idBakat.in_(request.bakat_id))
+            ).all()
+            existing_ids = [b[0] for b in existing_bakat]
+            invalid_ids = [bid for bid in request.bakat_id if bid not in existing_ids]
+            if invalid_ids:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Bakat dengan ID {invalid_ids} tidak ditemukan"
+                )
+        except HTTPException:
+            raise
+        except Exception as e:
+            print(f"ERROR : {e}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Error validasi bakat"
+            )
+
+    try:
+        db.execute(
+            delete(bakatPengguna).where(bakatPengguna.c.idPengguna == id_pengguna)
+        )
+        if request.bakat_id:
+            data = [{"idPengguna": id_pengguna, "idBakat": bid} for bid in request.bakat_id]
+            db.execute(insert(bakatPengguna).values(data))
+        db.commit()
+    except Exception as e:
+        print(f"ERROR : {e}")
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error mengganti bakat"
+        )
+
+    return {"message": "Bakat pengguna berhasil diperbarui"}
+
 @router.post("/pengguna", status_code=200)
 def tambah_bakat_pengguna(
     request: JSONBakatRequest,
@@ -235,7 +314,7 @@ def hapus_bakat_pengguna(
 def ambil_semua_data_bakat(user: Annotated[dict, Depends(validate_token)],db: Session = Depends(get_db)):
     query = []
     try:
-        query = db.execute(select(Bakat.idMinat,Bakat.nama)).all()
+        query = db.execute(select(Bakat.idBakat, Bakat.nama)).all()
     except Exception as e:
         print(f"ERROR : {e}")
         db.rollback()
@@ -245,6 +324,6 @@ def ambil_semua_data_bakat(user: Annotated[dict, Depends(validate_token)],db: Se
         )
     data = []
     for q in query:
-        data.append({"idBakat":q[0],"nama":q[1]})
-    message = {"message":"sukses menerima data bakat","data":data}
+        data.append({"idBakat": q[0], "nama": q[1]})
+    message = {"message": "sukses menerima data bakat", "data": data}
     return message
