@@ -77,14 +77,15 @@ export default function Institutions() {
         const rInst = await fetch(urlApprove, { method: 'POST', headers, body: JSON.stringify({ idCalonInstansi: item.id, isApproved: true }) })
         let jInst = null; try { jInst = await rInst.json() } catch {}
         if (!rInst.ok) throw new Error(jInst?.message || `HTTP ${rInst.status}`)
-
-        const passkey = (passkeys[item.id] || '').trim()
-        if (!passkey) throw new Error('Passkey wajib diisi untuk approve admin instansi')
-        const idInstansiNum = Number(jInst?.idInstansi)
-        if (!Number.isFinite(idInstansiNum) || idInstansiNum <= 0) throw new Error('idInstansi tidak valid')
-        const rAdm = await fetch('/api/approve/admin-instansi', { method: 'POST', headers, body: JSON.stringify({ idInstansi: idInstansiNum, email: item.email, unique_character: passkey, isApproved: true }) })
-        let jAdm = null; try { jAdm = await rAdm.json() } catch {}
-        if (!rAdm.ok) throw new Error(jAdm?.message || `HTTP ${rAdm.status}`)
+        if (item.kind !== 'edit') {
+          const passkey = (passkeys[item.id] || '').trim()
+          if (!passkey) throw new Error('Passkey wajib diisi untuk approve admin instansi')
+          const idInstansiNum = Number(jInst?.idInstansi)
+          if (!Number.isFinite(idInstansiNum) || idInstansiNum <= 0) throw new Error('idInstansi tidak valid')
+          const rAdm = await fetch('/api/approve/admin-instansi', { method: 'POST', headers, body: JSON.stringify({ idInstansi: idInstansiNum, email: item.email, unique_character: passkey, isApproved: true }) })
+          let jAdm = null; try { jAdm = await rAdm.json() } catch {}
+          if (!rAdm.ok) throw new Error(jAdm?.message || `HTTP ${rAdm.status}`)
+        }
       } else {
         const urlReject = item.kind === 'edit' ? '/api/approve/instansi/edit' : '/api/approve/instansi/baru'
         const rRej = await fetch(urlReject, { method: 'POST', headers, body: JSON.stringify({ idCalonInstansi: item.id, isApproved: false }) })
@@ -128,6 +129,7 @@ export default function Institutions() {
                     placeholder="Passkey admin"
                     value={passkeys[item.id] || ''}
                     onChange={e => setPasskeys(prev => ({ ...prev, [item.id]: e.target.value }))}
+                    disabled={item.kind === 'edit'}
                   />
                 </td>
                 <td className="px-4 py-3">

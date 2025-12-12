@@ -6,12 +6,13 @@ import Modal from '../../component/AdminPengawas/Modal.jsx'
 import Drawer from '../../component/AdminPengawas/Drawer.jsx'
 import Badge from '../../component/AdminPengawas/Badge.jsx'
 import NavButton from '../../component/AdminPengawas/NavButton.jsx'
-import { IconHome, IconUser, IconBuilding, IconKey, IconLogout, IconActivity } from '../../component/AdminPengawas/icons.jsx'
+import { IconHome, IconUser, IconUserPlus, IconBuilding, IconKey, IconLogout, IconActivity } from '../../component/AdminPengawas/icons.jsx'
 import Dashboard from '../../component/AdminPengawas/Dashboard.jsx'
 import Activities from '../../component/AdminPengawas/Activities.jsx'
 import Institutions from '../../component/AdminPengawas/Institutions.jsx'
 import Candidates from '../../component/AdminPengawas/Candidates.jsx'
 import SecretCodes from '../../component/AdminPengawas/SecretCodes.jsx'
+import ProfileAccount from '../../component/AdminPengawas/ProfileAccount.jsx'
 
 
 function AdminPengawas() {
@@ -21,7 +22,7 @@ function AdminPengawas() {
     display: { defaultTab: 'Dashboard' }
   }
 
-  const tabs = ['Dashboard', 'Kegiatan', 'Instansi', 'Calon Admin', 'Secret Code']
+  const tabs = ['Dashboard', 'Kegiatan', 'Instansi', 'Calon Admin', 'Secret Code', 'Profil Akun']
   const [settings] = useState(defaultSettings)
   const [tab, setTab] = useState(defaultSettings.display.defaultTab)
   const [loading, setLoading] = useState(true)
@@ -186,32 +187,29 @@ function AdminPengawas() {
     pushToast('Secret code dinonaktifkan')
   }
 
-
   
+    const navigate = useNavigate()
 
-  
-  const navigate = useNavigate()
+    const handleLogout = async () => {
+    pushToast('Logout') 
+      try {
+        const accessToken = localStorage.getItem("access_token")
 
-  const handleLogout = async () => {
-  pushToast('Logout') 
-    try {
-      const accessToken = localStorage.getItem("access_token")
-
-      await fetch("/api/account/logout", {
-        method: "GET",
-        headers: {
-          "Authorization": `Bearer ${accessToken}`
-        }
-      })
-    } catch (err) {
-      console.error("Logout error:", err)
+        await fetch("/api/account/logout", {
+          method: "GET",
+          headers: {
+            "Authorization": `Bearer ${accessToken}`
+          }
+        })
+      } catch (err) {
+        console.error("Logout error:", err)
+      }
+      localStorage.removeItem("access_token")
+      localStorage.removeItem("refresh_token")
+      setTimeout(() => {
+        navigate("/login")
+      }, 600)
     }
-    localStorage.removeItem("access_token")
-    localStorage.removeItem("refresh_token")
-    setTimeout(() => {
-      navigate("/login")
-    }, 600)
-  }
   
   return (
     <div className="h-screen flex">
@@ -228,8 +226,9 @@ function AdminPengawas() {
           <NavButton title="Dashboard" active={tab===tabs[0]} onClick={()=>setTab(tabs[0])}><IconHome /></NavButton>
           <NavButton title="Kegiatan" active={tab===tabs[1]} onClick={()=>setTab(tabs[1])}><IconActivity /></NavButton>
           <NavButton title="Instansi" active={tab===tabs[2]} onClick={()=>setTab(tabs[2])}><IconBuilding /></NavButton>
-          <NavButton title="Calon Admin" active={tab===tabs[3]} onClick={()=>setTab(tabs[3])}><IconUser /></NavButton>
+          <NavButton title="Calon Admin" active={tab===tabs[3]} onClick={()=>setTab(tabs[3])}><IconUserPlus /></NavButton>
           <NavButton title="Secret Code" active={tab===tabs[4]} onClick={()=>setTab(tabs[4])}><IconKey /></NavButton>
+          <NavButton title="Profil Akun" active={tab===tabs[5]} onClick={()=>setTab(tabs[5])}><IconUser /></NavButton>
         </nav>
         <div className="mt-auto">
           <NavButton title="Logout" active={false} onClick={handleLogout}><IconLogout /></NavButton>
@@ -257,6 +256,7 @@ function AdminPengawas() {
           {tab===tabs[2] && <Institutions />}
           {tab===tabs[3] && <Candidates />}
           {tab===tabs[4] && <SecretCodes institutions={institutions} secretCodes={secretCodes} settings={settings} onGenerate={generateCode} onRevoke={revokeCode} />}
+          {tab===tabs[5] && <ProfileAccount />}
           
         </section>
       </main>

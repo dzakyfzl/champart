@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import Logo from '../../assets/svg/champart-logo.svg'
 import Toast from '../../component/AdminInstansi/Toast.jsx'
 import Modal from '../../component/AdminInstansi/Modal.jsx'
@@ -39,10 +40,28 @@ function AdminInstansi() {
   
   function saveAccount(updates) { setAccount(prev => ({ ...prev, ...updates })) }
   function saveInstitution(updates) { setInstitution(prev => ({ ...prev, ...updates })) }
-  function handleLogout() { 
-    pushToast('Logout'); 
-    const token = localStorage.getItem('access_token') || ''
-    setTimeout(() => { window.location.href = '/login' }, 600) }
+  const navigate = useNavigate()
+ 
+   const handleLogout = async () => {
+   pushToast('Logout') 
+     try {
+       const accessToken = localStorage.getItem("access_token")
+ 
+       await fetch("/api/account/logout", {
+         method: "GET",
+         headers: {
+           "Authorization": `Bearer ${accessToken}`
+         }
+       })
+     } catch (err) {
+       console.error("Logout error:", err)
+     }
+     localStorage.removeItem("access_token")
+     localStorage.removeItem("refresh_token")
+     setTimeout(() => {
+       navigate("/login")
+     }, 600)
+   }
   function deleteAccount() { openModal('Hapus Akun', <div>Anda akan menghapus akun ini.</div>, () => { setAccount({ name: '', email: '', phone: '', avatar: '' }); pushToast('Akun dihapus'); closeModal() }, 'Hapus', true) }
 
   async function fileToDataUrl(file) {

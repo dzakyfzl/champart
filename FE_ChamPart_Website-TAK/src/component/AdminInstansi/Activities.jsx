@@ -40,6 +40,9 @@ export default function Activities({ activities, setActivities, pushToast, openM
     return Number(idLampiran)
   }
 
+  function dataUrlToFile(dataUrl, filename){ const arr=dataUrl.split(','); const mime=(arr[0].match(/:(.*?);/)||[])[1]||'image/jpeg'; const bstr=atob(arr[1]); let n=bstr.length; const u8=new Uint8Array(n); while(n--) u8[n]=bstr.charCodeAt(n); return new File([u8], filename, { type: mime }) }
+  async function compressImage(file){ return new Promise((resolve,reject)=>{ const url = URL.createObjectURL(file); const img = new Image(); img.onload = ()=>{ const maxDim=1280; const scale = Math.min(1, maxDim/Math.max(img.width, img.height)); const w = Math.round(img.width*scale); const h = Math.round(img.height*scale); const c=document.createElement('canvas'); c.width=w; c.height=h; const ctx=c.getContext('2d'); ctx.drawImage(img,0,0,w,h); let q=0.85; let out=c.toDataURL('image/jpeg', q); const base='data:image/jpeg;base64,'; function sizeOf(d){ return Math.ceil((d.length - base.length)*3/4) } while(sizeOf(out) > 900*1024 && q > 0.5){ q-=0.1; out=c.toDataURL('image/jpeg', q) } URL.revokeObjectURL(url); resolve({ dataUrl: out, file: dataUrlToFile(out, (file.name||'lampiran').replace(/\.(png|jpeg|jpg)$/i,'.jpg')) }) }; img.onerror=reject; img.src=url }) }
+
   function formatWIB(iso) {
     if (!iso) return ''
     const d = new Date(iso)
@@ -136,7 +139,7 @@ export default function Activities({ activities, setActivities, pushToast, openM
               <div className="w-20 h-20 rounded bg-gray-100 overflow-hidden border">
                 {preview ? (<img src={preview} alt="Preview" className="w-full h-full object-cover" />) : (<div className="w-full h-full grid place-items-center text-xs text-gray-500">Preview</div>)}
               </div>
-              <input aria-label="Lampiran kegiatan" type="file" accept="image/*" onChange={e => { const f = e.target.files?.[0]; if (!f) { data.file = null; setPreview(''); return } const typeOk = String(f.type||'').startsWith('image/'); const sizeOk = f.size <= 2 * 1024 * 1024; if (!typeOk) { pushToast('File harus gambar', 'error'); data.file = null; return } if (!sizeOk) { pushToast('Maksimal ukuran 2MB', 'error'); data.file = null; return } data.file = f; const r = new FileReader(); r.onload = () => setPreview(String(r.result||'')); r.readAsDataURL(f) }} />
+              <input aria-label="Lampiran kegiatan" type="file" accept="image/*" onChange={async e => { const f = e.target.files?.[0]; if (!f) { data.file = null; setPreview(''); return } const typeOk = String(f.type||'').startsWith('image/'); if (!typeOk) { pushToast('File harus gambar', 'error'); data.file = null; return } try { const { dataUrl, file: comp } = await compressImage(f); if (comp.size > 900 * 1024) { pushToast('Maksimal ukuran 1MB', 'error'); data.file = null; return } data.file = comp; setPreview(dataUrl) } catch { pushToast('Gagal memproses gambar', 'error'); data.file = null } }} />
             </div>
           </div>
           {saving && (
@@ -284,7 +287,7 @@ export default function Activities({ activities, setActivities, pushToast, openM
               <div className="w-20 h-20 rounded bg-gray-100 overflow-hidden border">
                 {preview ? (<img src={preview} alt="Preview" className="w-full h-full object-cover" />) : (<div className="w-full h-full grid place-items-center text-xs text-gray-500">Preview</div>)}
               </div>
-              <input aria-label="Lampiran kegiatan" type="file" accept="image/*" onChange={e => { const f = e.target.files?.[0]; if (!f) { data.file = null; setPreview(''); return } const typeOk = String(f.type||'').startsWith('image/'); const sizeOk = f.size <= 2 * 1024 * 1024; if (!typeOk) { pushToast('File harus gambar', 'error'); data.file = null; return } if (!sizeOk) { pushToast('Maksimal ukuran 2MB', 'error'); data.file = null; return } data.file = f; const r = new FileReader(); r.onload = () => setPreview(String(r.result||'')); r.readAsDataURL(f) }} />
+              <input aria-label="Lampiran kegiatan" type="file" accept="image/*" onChange={async e => { const f = e.target.files?.[0]; if (!f) { data.file = null; setPreview(''); return } const typeOk = String(f.type||'').startsWith('image/'); if (!typeOk) { pushToast('File harus gambar', 'error'); data.file = null; return } try { const { dataUrl, file: comp } = await compressImage(f); if (comp.size > 900 * 1024) { pushToast('Maksimal ukuran 1MB', 'error'); data.file = null; return } data.file = comp; setPreview(dataUrl) } catch { pushToast('Gagal memproses gambar', 'error'); data.file = null } }} />
             </div>
           </div>
           {saving && (

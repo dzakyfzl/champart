@@ -1,6 +1,6 @@
-import React, { useEffect, useState, useRef } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 
-export default function ProfileAccount({ fileToDataUrl }) {
+export default function ProfileAccount() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -12,7 +12,6 @@ export default function ProfileAccount({ fileToDataUrl }) {
   const [username, setUsername] = useState('')
   const [email, setEmail] = useState('')
   const [jabatan, setJabatan] = useState('')
-  const [instansiName, setInstansiName] = useState('')
   const [avatar, setAvatar] = useState('')
   const [avatarFile, setAvatarFile] = useState(null)
   const [original, setOriginal] = useState(null)
@@ -39,7 +38,6 @@ export default function ProfileAccount({ fileToDataUrl }) {
           setUsername(String(u.username || ''))
           setEmail(String(u.email || ''))
           setJabatan(String(u.jabatan || ''))
-          setInstansiName(String(u.nama_instansi || ''))
           const idLamp = Number(u.idLampiran)
           if (Number.isFinite(idLamp) && idLamp > 0) {
             try {
@@ -68,9 +66,9 @@ export default function ProfileAccount({ fileToDataUrl }) {
       setSuccess('')
       const token = localStorage.getItem('access_token') || ''
       const headers = { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) }
-      const body = { username: String(username||'').trim(), email: String(email||'').trim(), password: String(confirmPassword||''), jabatan: String(jabatan||'').trim(), idInstansi: 0, passkey: '' }
+      const body = { username: String(username||'').trim(), email: String(email||'').trim(), password: String(confirmPassword||''), jabatan: String(jabatan||'').trim(), passkey: '' }
       if (!body.username || !body.email || !body.password || !body.jabatan) throw new Error('Semua field wajib diisi')
-      const res = await fetch('/api/account/admin-instansi/edit', { method: 'POST', headers, body: JSON.stringify(body) })
+      const res = await fetch('/api/account/admin-pengawas/edit', { method: 'POST', headers, body: JSON.stringify(body) })
       let j = null
       try { j = await res.json() } catch {}
       if (!res.ok) throw new Error(j?.message || `HTTP ${res.status}`)
@@ -129,23 +127,7 @@ export default function ProfileAccount({ fileToDataUrl }) {
         {loading && <div className="text-sm text-gray-600">Memuat…</div>}
         {error && <div className="text-sm text-red-700 mb-2">{error}</div>}
         {success && <div className="text-sm text-green-700 mb-2">{success}</div>}
-        <div className="grid grid-cols-2 lg:grid-cols-1 gap-4">
-          <div className="gap-4">
-            <div className="text-sm font-medium mb-1">Foto Profil</div>
-            <div className="flex items-center gap-4">
-              <div className="w-16 h-16 rounded-full bg-gray-200 overflow-hidden border">
-                {avatar ? (<img src={avatar} alt="Avatar" className="w-full h-full object-cover" />) : (<div className="w-full h-full grid place-items-center text-xs text-gray-500">PP</div>)}
-              </div>
-              <div>
-                <div className="text-sm text-gray-700 mb-1">Upload Foto Profil</div>
-          <div className="flex items-center gap-2">
-                <button className="px-3 py-2 rounded border" disabled={!isEditing || saving} onClick={()=>fileInputRef.current?.click()}>Ubah Foto</button>
-                {avatarFile && (<span className="text-xs text-gray-500 truncate max-w-[160px]">{avatarFile.name}</span>)}
-              </div>
-              <input ref={fileInputRef} aria-label="Upload avatar" type="file" accept="image/*" className="hidden" disabled={!isEditing || saving} onChange={async (e)=>{ const file=e.target.files?.[0]; if (file) { try { const { dataUrl, file: out } = await compressImage(file); setAvatarFile(out); setAvatar(dataUrl) } catch { setAvatarFile(file); const url=await fileToDataUrl(file); setAvatar(url) } } }} />
-              </div>
-            </div>
-          </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <label className="block">
             <div className="text-sm font-medium mb-1">Username</div>
             <input className="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" value={username} onChange={e=>setUsername(e.target.value)} disabled={!isEditing || saving} />
@@ -158,10 +140,21 @@ export default function ProfileAccount({ fileToDataUrl }) {
             <div className="text-sm font-medium mb-1">Jabatan</div>
             <input className="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" value={jabatan} onChange={e=>setJabatan(e.target.value)} disabled={!isEditing || saving} />
           </label>
-          <label className="block">
-            <div className="text-sm font-medium mb-1">Nama Instansi</div>
-            <input className="w-full border rounded px-3 py-2 bg-gray-100" value={instansiName} disabled />
-          </label>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+          <div className="flex items-center gap-4">
+            <div className="w-16 h-16 rounded-full bg-gray-200 overflow-hidden border">
+              {avatar ? (<img src={avatar} alt="Avatar" className="w-full h-full object-cover" />) : (<div className="w-full h-full grid place-items-center text-xs text-gray-500">PP</div>)}
+            </div>
+            <div>
+              <div className="text-sm text-gray-700 mb-1">Foto Profil</div>
+              <div className="flex items-center gap-2">
+                <button className="px-3 py-2 rounded border" disabled={!isEditing || saving} onClick={()=>fileInputRef.current?.click()}>Ubah Foto</button>
+                {avatarFile && (<span className="text-xs text-gray-500 truncate max-w-[160px]">{avatarFile.name}</span>)}
+              </div>
+              <input ref={fileInputRef} aria-label="Upload avatar" type="file" accept="image/*" className="hidden" disabled={!isEditing || saving} onChange={async (e)=>{ const file=e.target.files?.[0]; if (file) { try { const { dataUrl, file: out } = await compressImage(file); setAvatarFile(out); setAvatar(dataUrl) } catch { setAvatarFile(file); const url=await new Promise((resolve,reject)=>{ const reader=new FileReader(); reader.onload=()=>resolve(reader.result); reader.onerror=reject; reader.readAsDataURL(file) }); setAvatar(url) } } }} />
+            </div>
+          </div>
         </div>
         <div className="mt-4 flex items-center justify-end gap-2">
           {!isEditing && (
@@ -192,9 +185,9 @@ export default function ProfileAccount({ fileToDataUrl }) {
             {avatar ? (<img src={avatar} alt="Avatar Preview" className="w-full h-full object-cover" />) : (<div className="w-full h-full grid place-items-center text-xs text-gray-500">PP</div>)}
           </div>
           <div>
-            <div className="font-medium text-lg">{username || 'Admin Instansi'}</div>
-            <div className="text-sm text-gray-600">{email || 'admin@instansi.id'}</div>
-            <div className="text-xs text-gray-500">{jabatan || ''}{jabatan && instansiName ? ' · ' : ''}{instansiName || ''}</div>
+            <div className="font-medium text-lg">{username || 'Admin Pengawas'}</div>
+            <div className="text-sm text-gray-600">{email || 'admin@pengawas.id'}</div>
+            <div className="text-xs text-gray-500">{jabatan || ''}</div>
           </div>
         </div>
       </div>

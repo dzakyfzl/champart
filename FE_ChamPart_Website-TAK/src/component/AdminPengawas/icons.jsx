@@ -19,6 +19,17 @@ export function IconUser() {
   )
 }
 
+export function IconUserPlus() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="11" cy="7.5" r="3" />
+      <path d="M4 20c0-4 12-4 12 0" />
+      <path d="M18 6h4" />
+      <path d="M20 4v4" />
+    </svg>
+  )
+}
+
 export function IconBuilding() {
   return (
     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
