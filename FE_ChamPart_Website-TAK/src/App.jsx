@@ -147,13 +147,12 @@ function App() {
             <Route path="/bookmark" element={<Protected loading={loading} allowedRoles={["Pengguna"]} role={role}><Bookmark /></Protected>} />
             <Route path="/history" element={<Protected loading={loading} allowedRoles={["Pengguna"]} role={role}><History /></Protected>} />
             <Route path="/search" element={<Protected loading={loading} allowedRoles={["Pengguna"]} role={role}><TampilanSearch /></Protected>} />
-            <Route path="/kegiatan" element={<Protected loading={loading} allowedRoles={["Pengguna"]} role={role}><TampilanKegiatan /></Protected>} />
             <Route path="/editprofile" element={<Protected loading={loading} allowedRoles={["Pengguna"]} role={role}><Profile /></Protected>} />
             <Route path="/editpassword" element={<Protected loading={loading} allowedRoles={["Pengguna"]} role={role}><EditPassword /></Protected>} />
             <Route path="/editemail" element={<Protected loading={loading} allowedRoles={["Pengguna"]} role={role}><EditEmail /></Protected>} />
             <Route path="/admin/instansi" element={<Protected loading={loading} allowedRoles={["AdminInstansi"]} role={role}><AdminInstansi /></Protected>} />
             <Route path="/admin/pengawas" element={<Protected loading={loading} allowedRoles={["AdminPengawas"]} role={role}><AdminPengawas /></Protected>} />
-
+            <Route path="/kegiatan/:id" element={<Protected loading={loading} allowedRoles={["Pengguna"]} role={role}><TampilanKegiatan /></Protected>} />
             <Route path="/login" element={<Login setToken={setToken} />} />
             <Route path="/register" element={<Registrasi />} />
             <Route path="/admin/register" element={<RegisterAdmin />} />

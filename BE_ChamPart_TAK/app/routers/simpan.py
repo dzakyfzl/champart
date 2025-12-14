@@ -5,7 +5,6 @@ from sqlalchemy import select
 from datetime import datetime
 
 from ..database.database import get_db
-from ..database.models import *
 from ..classmodel import *
 from ..depedency import validate_token
 
@@ -144,13 +143,15 @@ def get_semua_simpan(
                 deskripsi=s.kegiatan.deskripsi,
                 waktu_kegiatan=s.kegiatan.waktu,
                 nominal_TAK=s.kegiatan.nominal_TAK,
+                views=s.kegiatan.views,
                 TAK_wajib=s.kegiatan.TAK_wajib,
                 status_kegiatan=s.kegiatan.status_kegiatan,
                 nama_instansi=s.kegiatan.instansi.nama,
-                waktu_disimpan=s.waktu
+                waktu_disimpan=s.waktu,
             )
             for s in simpan_list
             if s.kegiatan.status_kegiatan == "approved" and s.kegiatan.waktu > now
+            
         ]
 
         kegiatan_list.sort(key=lambda x: x.waktu_kegiatan)
@@ -159,6 +160,7 @@ def get_semua_simpan(
             total=len(kegiatan_list),
             kegiatan=kegiatan_list
         )
+        
 
     except HTTPException:
         raise
@@ -215,7 +217,8 @@ def get_history_simpan(
                 TAK_wajib=s.kegiatan.TAK_wajib,
                 status_kegiatan=s.kegiatan.status_kegiatan,
                 nama_instansi=s.kegiatan.instansi.nama,
-                waktu_disimpan=s.waktu
+                waktu_disimpan=s.waktu,
+                views=s.kegiatan.views
             )
             for s in simpan_list
             if s.kegiatan.waktu <= now  

@@ -12,10 +12,12 @@ class JSONSimpanResponse(BaseModel):
     deskripsi: str
     waktu_kegiatan: datetime
     nominal_TAK: int
+    views: int
     TAK_wajib: bool
     status_kegiatan: str
     nama_instansi: str
     waktu_disimpan: datetime
+
 
 class JSONSimpanList(BaseModel):
     total: int

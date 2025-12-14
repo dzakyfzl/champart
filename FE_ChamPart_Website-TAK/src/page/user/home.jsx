@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Homepage from '../../assets/image/homepage.png'
 import Bootcamp from '../../assets/svg/bootcamp.svg'
@@ -11,14 +11,40 @@ import Card from '../../component/card.jsx'
 
 
 function Home(){
-  const items = new Array(8).fill(0)
+  const [items, setItems] = useState([])
+  const [loading, setLoading] = useState(true)
   const categoryRef = useRef(null)
   const navigate = useNavigate()
   const [categoryActive, setCategoryActive] = useState(null)
   const [filterActive, setFilterActive] = useState(null)
+
+  useEffect(() => {
+    const fetchKegiatan = async () => {
+      try {
+        setLoading(true)
+        const token = localStorage.getItem('access_token') 
+        const res = await fetch('/api/kegiatan/fyp', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        })
+        const data = await res.json()
+        if (res.ok) {
+          setItems(data.data || data)
+        }
+      } catch (error) {
+        console.error('Error fetching kegiatan:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchKegiatan()
+  }, [])
+
   const handleClick = (value) => {
     setCategoryActive(prev => prev === value ? null : value)
   }
+
   const minatKegiatan = [
     "Kewirausahaan (Entrepreneurship)",
     "Teknologi & Pemrograman",
@@ -151,19 +177,25 @@ function Home(){
       </section>
 
       <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        {items.map((_, i) => (
-          <Card 
-            key={i}
-            gambar="https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=1200&auto=format&fit=crop"
-            judul="Artificial Intelligence Competition “Implementasi AI dalam Kehidupan Sehari - Hari”"
-            instansi="Universitas Negeri Yogyakarta"
-            tanggal="Sabtu, 31 Oktober 2021"
-            statusTAK="TAK WAJIB"
-            views={100}
-            deadline="19/10/2021"
-            onClick={()=>navigate('/kegiatan')}
-          />
-        ))}
+        {loading ? (
+          <p>Loading...</p>
+        ) : items.length > 0 ? (
+          items.map((kegiatan, i) => (
+            <Card 
+              key={kegiatan.idKegiatan || i}
+              gambar={kegiatan.gambar || "https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=1200&auto=format&fit=crop"}
+              judul={kegiatan.nama}
+              instansi={kegiatan.instansi || "Unknown"}
+              tanggal={kegiatan.waktu}
+              statusTAK={kegiatan.TAK ? "TAK WAJIB" : "NON TAK"}
+              views={kegiatan.views || 0}
+              deadline={kegiatan.deadline}
+              onClick={()=>navigate(`/kegiatan/${kegiatan.idKegiatan}`)}
+            />
+          ))
+        ) : (
+          <p>Tidak ada kegiatan</p>
+        )}
       </section>
     </div>
   )
