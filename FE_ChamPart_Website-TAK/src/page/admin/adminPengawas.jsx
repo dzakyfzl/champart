@@ -34,6 +34,40 @@ function AdminPengawas() {
   const [institutions, setInstitutions] = useState([])
   const [secretCodes, setSecretCodes] = useState([])
   const [pendingCount, setPendingCount] = useState(0)
+
+  const [adminCandidates, setAdminCandidates] = useState([])
+  const [loadingAdmin, setLoadingAdmin] = useState(false)
+
+  useEffect(() => {
+  const fetchAdminCandidates = async () => {
+    try {
+      setLoadingAdmin(true)
+      const token = localStorage.getItem('access_token')
+      const res = await fetch('/api/calon/admin-instansi/get', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+      const result = await res.json()
+      if (res.ok && result.data) {
+        const mapped = result.data.map(item => ({
+          id: item.idCalonAdminInstansi,
+          email: item.email,
+          instansiId: item.idInstansi,
+          instansiNama: item.namaInstansi,
+          status: 'Menunggu',
+          tanggalPengajuan: new Date().toLocaleDateString('id-ID')
+        }))
+        setAdminCandidates(mapped)
+      } else {
+        console.error(result.message || 'Gagal mengambil calon admin instansi')
+      }
+    } catch (err) {
+      console.error('Error fetching calon admin instansi:', err)
+    } finally {
+      setLoadingAdmin(false)
+    }
+  }
+  fetchAdminCandidates()
+}, [])
  
   useEffect(() => { 
     const fetchPendingActivities = async () => {
@@ -426,7 +460,7 @@ function rejectActivity(item) {
           {tab===tabs[0] && <Dashboard activities={activities} institutions={institutions} secretCodes={secretCodes} pendingCount={pendingCount} />}
           {tab===tabs[1] && <Activities loading={loading} activities={activities} onViewDetail={openActivityDetail} onApprove={approveActivity} onReject={rejectActivity} />}
           {tab===tabs[2] && <Institutions />}
-          {tab===tabs[3] && <Candidates />}
+          {tab===tabs[3] && (<Candidates loading={loadingAdmin} candidates={adminCandidates} />)}
           {tab===tabs[4] && <SecretCodes institutions={institutions} secretCodes={secretCodes} settings={settings} onGenerate={generateCode} onRevoke={revokeCode} />}
           {tab===tabs[5] && <ProfileAccount />}
           

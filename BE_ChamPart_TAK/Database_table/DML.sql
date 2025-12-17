@@ -232,3 +232,23 @@ INSERT INTO Simpan (idPengguna, idKegiatan, waktu) VALUES
 (3, 3, '2025-10-29 16:00:00'),
 (4, 4, '2025-10-29 16:30:00'),
 (5, 5, '2025-10-29 17:00:00');
+
+-- ===========================
+-- CalonAdminInstansi (15 data dummy)
+-- ===========================
+INSERT INTO CalonAdminInstansi (idCalonAdminInstansi, email, idInstansi) VALUES
+(1, 'admin1@majubersamatek.co.id', 1),
+(2, 'admin2@harapan.or.id', 2),
+(3, 'admin3@devindo.id', 3),
+(4, 'admin4@savenature.org', 4),
+(5, 'admin5@globaltek.ac.id', 5),
+(6, 'admin6@kreasidigital.com',1),
+(7, 'admin7@sejahtera.or.id', 2),
+(8, 'admin8@techstartup.id', 3),
+(9, 'admin9@indonesiacare.org', 4),
+(10, 'admin10@polinusa.ac.id', 5),
+(11, 'admin11@solusibisnis.co.id', 1),
+(12, 'admin12@bangsa.or.id', 2),
+(13, 'admin13@creativepreneur.id', 3),
+(14, 'admin14@youthempowerment.org', 4),
+(15, 'admin15@itm.ac.id', 5);
