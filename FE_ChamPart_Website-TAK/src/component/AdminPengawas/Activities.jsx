@@ -33,8 +33,8 @@ export default function Activities({ loading, activities, onViewDetail, onApprov
                 <td className="px-4 py-3">
                   <div className="flex flex-wrap gap-2">
                     <button className="px-3 py-1 rounded border" onClick={() => onViewDetail(item)}>Detail</button>
-                    <button className="px-3 py-1 rounded bg-green-600 text-white" onClick={() => onApprove(item)} disabled={item.status !== 'Menunggu'}>Setujui</button>
-                    <button className="px-3 py-1 rounded bg-red-600 text-white" onClick={() => onReject(item)} disabled={item.status !== 'Menunggu'}>Tolak</button>
+                    <button className="px-3 py-1 rounded bg-green-600 text-white" onClick={() => onApprove(item)} disabled={item.status !== 'Pending'}>Setujui</button>
+                    <button className="px-3 py-1 rounded bg-red-600 text-white" onClick={() => onReject(item)} disabled={item.status !== 'Pending'}>Tolak</button>
                   </div>
                 </td>
               </tr>

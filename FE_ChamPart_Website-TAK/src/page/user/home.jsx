@@ -17,18 +17,47 @@ function Home(){
   const navigate = useNavigate()
   const [categoryActive, setCategoryActive] = useState(null)
   const [filterActive, setFilterActive] = useState(null)
+  const [selectedMinat, setSelectedMinat] = useState([])
+  const [selectedBakat, setSelectedBakat] = useState([])
 
   useEffect(() => {
     const fetchKegiatan = async () => {
       try {
         setLoading(true)
         const token = localStorage.getItem('access_token') 
-        const res = await fetch('/api/kegiatan/fyp', {
+        const hasFilter = categoryActive || selectedMinat.length > 0 || selectedBakat.length > 0
+        
+        let url = '/api/kegiatan/fyp'
+        
+        if (hasFilter) {
+          const params = new URLSearchParams()
+          if (categoryActive) params.append('jenis', categoryActive)  // ✅ Sudah ada!
+          selectedMinat.forEach(m => {
+            const minatIndex = minatKegiatan.indexOf(m) + 1
+            if (minatIndex > 0) params.append('minat_ids', minatIndex)
+          })
+          selectedBakat.forEach(b => {
+            const bakatIndex = bakatKegiatan.indexOf(b) + 1
+            if (bakatIndex > 0) params.append('bakat_ids', bakatIndex)
+          })
+          
+          url = `/api/kegiatan/filter?${params.toString()}`
+        } else {
+          if (filterActive === 'Most Popular') {
+            url = '/api/kegiatan/fyp?sort=popular'
+          } else if (filterActive === 'New Arrival') {
+            url = '/api/kegiatan/fyp?sort=latest'
+          }
+        }
+
+
+        const res = await fetch(url, {
           headers: {
             'Authorization': `Bearer ${token}`
           }
         })
         const data = await res.json()
+        console.log('Response:', data)
         if (res.ok) {
           setItems(data.data || data)
         }
@@ -39,7 +68,7 @@ function Home(){
       }
     }
     fetchKegiatan()
-  }, [])
+  }, [categoryActive, selectedMinat, selectedBakat, filterActive])
 
   const handleClick = (value) => {
     setCategoryActive(prev => prev === value ? null : value)
@@ -90,6 +119,17 @@ function Home(){
     "Strategi & Perencanaan",
     "Keberanian & Pengambilan Risiko"
   ];
+
+  const formatTanggal = (dateString) => {
+    return new Date(dateString).toLocaleDateString('id-ID', { 
+      weekday: 'long', 
+      day: 'numeric', 
+      month: 'long', 
+      year: 'numeric' 
+    })
+  }
+
+
   return (
     <div className="space-y-10">
       <section className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-6">
@@ -152,10 +192,14 @@ function Home(){
 
      <section className="flex items-center justify-center border-y py-3">
         <div className="flex items-center gap-16 font-semibold">
-          <Dropdown items={minatKegiatan}>
+          <Dropdown items={minatKegiatan}
+            selected={selectedMinat}
+            onChange={setSelectedMinat}>
             Minat Kegiatan
           </Dropdown>
-          <Dropdown items={bakatKegiatan}>
+          <Dropdown items={bakatKegiatan}
+            selected={selectedBakat}
+            onChange={setSelectedBakat}>
             Bakat Kegiatan
           </Dropdown>
         </div>
@@ -185,11 +229,11 @@ function Home(){
               key={kegiatan.idKegiatan || i}
               gambar={kegiatan.gambar || "https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=1200&auto=format&fit=crop"}
               judul={kegiatan.nama}
-              instansi={kegiatan.instansi || "Unknown"}
-              tanggal={kegiatan.waktu}
-              statusTAK={kegiatan.TAK ? "TAK WAJIB" : "NON TAK"}
+              instansi={kegiatan.nama_instansi || "Unknown"}
+              tanggal={formatTanggal(kegiatan.waktu)}
+              statusTAK={kegiatan.TAK_wajib ? "TAK WAJIB" : "NON TAK"}
               views={kegiatan.views || 0}
-              deadline={kegiatan.deadline}
+              deadline={formatTanggal(kegiatan.waktu)}
               onClick={()=>navigate(`/kegiatan/${kegiatan.idKegiatan}`)}
             />
           ))

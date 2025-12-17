@@ -43,15 +43,24 @@ function Header(){
       e.preventDefault();
       navigate(`/search/`)
       const trimmed = query.trim();
-      if (!trimmed) return;  
+      if (!trimmed) return;
+        navigate(`/search?q=${encodeURIComponent(trimmed)}`)
+
       setRecent(prev => {
         const updated = prev.filter(item => item.toLowerCase() !== trimmed.toLowerCase());
         return [trimmed, ...updated]; 
       });
 
-      setOpenSuggest(false);  
+      setOpenSuggest(false);
+      setQuery('');  
     }
   };
+
+  const handleRecentClick = (searchTerm) => {
+    navigate(`/search?q=${encodeURIComponent(searchTerm)}`)
+    setOpenSuggest(false)
+    setQuery('')
+  }
 
     const triggerSearch = () => {
       setOpenUser(false)
@@ -127,7 +136,7 @@ function Header(){
                 </div>
                 <ul className="px-2 pb-3">
                   {recent.map((s)=> (
-                    <li key={s} className="flex items-center gap-3 px-3 py-2 hover:bg-gray-50 cursor-pointer" onMouseDown={()=>{setQuery(s); setOpenSuggest(false)}}>
+                    <li key={s} className="flex items-center gap-3 px-3 py-2 hover:bg-gray-50 cursor-pointer" onMouseDown={()=>handleRecentClick(s)}>
                       <svg viewBox="0 0 24 24" className="h-5 w-5 text-gray-500 fill-current"><path d="M12 8v5l4 2-1 1-5-3V8z"/><path d="M12 2a10 10 0 100 20 10 10 0 000-20z"/></svg>
                       <span>{s}</span>
                     </li>

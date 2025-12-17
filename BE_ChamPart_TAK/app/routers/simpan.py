@@ -6,6 +6,7 @@ from datetime import datetime
 
 from ..database.database import get_db
 from ..classmodel import *
+from ..database.models import *
 from ..depedency import validate_token
 
 router = APIRouter(prefix="/simpan", tags=["Simpan Kegiatan"])

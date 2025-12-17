@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Response, status, Depends,Query
-from typing import Annotated, List
+from typing import Annotated, List, Optional
 from sqlalchemy.orm import Session
 from sqlalchemy import insert, select, text, func, delete, update
 from datetime import datetime
@@ -251,7 +251,9 @@ def filter_search_kegiatan(
     response: Response,
     user: Annotated[dict, Depends(validate_token)],
     search: str = Query(default="", description="Cari berdasarkan nama kegiatan"),
+    jenis: Optional[str] = Query(None, description="Filter berdasarkan jenis: Seminar, Webinar, Bootcamp, Lomba"),
     minat_ids: List[int] = Query(default=[], description="List ID minat"),
+    sort: Optional[str] = Query(None, description="Sort by: latest, popular, or all"),
     bakat_ids: List[int] = Query(default=[], description="List ID bakat"),
     db: Session = Depends(get_db)
 ):
@@ -266,6 +268,15 @@ def filter_search_kegiatan(
             
             if search:
                 query = query.where(Kegiatan.nama.ilike(f"%{search}%"))
+
+            if jenis:
+                query = query.where(Kegiatan.jenis == jenis)
+            
+            if sort == "popular":
+                query = query.order_by(Kegiatan.views.desc())
+            elif sort == "latest":
+                query = query.order_by(Kegiatan.waktu.asc())
+            
             
             kegiatan_list = db.execute(query).scalars().all()
         except Exception as e:
@@ -287,6 +298,9 @@ def filter_search_kegiatan(
                 )
                 if search:
                     query = query.where(Kegiatan.nama.ilike(f"%{search}%"))
+                if jenis:
+                    query = query.where(Kegiatan.jenis == jenis)
+                
                 
                 result = db.execute(query).scalars().all()
                 kegiatan_by_minat = set(result)
@@ -305,10 +319,18 @@ def filter_search_kegiatan(
                 if search:
                     query = query.where(Kegiatan.nama.ilike(f"%{search}%"))
                 
+                if jenis:
+                    query = query.where(Kegiatan.jenis == jenis)
+                
                 result = db.execute(query).scalars().all()
                 kegiatan_by_bakat = set(result)
 
             kegiatan_list = list(kegiatan_by_minat | kegiatan_by_bakat)
+
+            if sort == "popular":
+                kegiatan_list.sort(key=lambda x: x.views, reverse=True)
+            elif sort == "latest":
+                kegiatan_list.sort(key=lambda x: x.waktu)
             
         except Exception as e:
             print(f"ERROR : {e}")
@@ -339,6 +361,7 @@ def filter_search_kegiatan(
 def get_fyp_kegiatan(
     response: Response,
     user: Annotated[dict, Depends(validate_token)],
+    sort: Optional[str] = Query(None, description="Sort by: latest, popular, or all"),
     db: Session = Depends(get_db)
 ):
     now = datetime.now()
@@ -363,55 +386,57 @@ def get_fyp_kegiatan(
     minat_ids = [m.idMinat for m in pengguna.minat_list]
     bakat_ids = [b.idBakat for b in pengguna.bakat_list]
 
-    if not minat_ids and not bakat_ids:
-        try:
-            kegiatan_list = db.execute(
+    try:
+        kegiatan_prioritas = set()
+        if minat_ids:
+            result = db.execute(
                 select(Kegiatan)
+                .join(minatKegiatan, Kegiatan.idKegiatan == minatKegiatan.c.idKegiatan)
                 .where(
                     Kegiatan.status_kegiatan == "approved",
-                    Kegiatan.waktu > now
+                    Kegiatan.waktu > now,
+                    minatKegiatan.c.idMinat.in_(minat_ids)
                 )
-                .order_by(Kegiatan.waktuDiupload.desc())
             ).scalars().all()
-        except Exception as e:
-            print(f"ERROR : {e}")
-            response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
-            return {"message": "error pada sambungan database"}
-    else:
-        try:
-            kegiatan_by_minat = set()
-            if minat_ids:
-                result = db.execute(
-                    select(Kegiatan)
-                    .join(minatKegiatan, Kegiatan.idKegiatan == minatKegiatan.c.idKegiatan)
-                    .where(
-                        Kegiatan.status_kegiatan == "approved",
-                        Kegiatan.waktu > now,
-                        minatKegiatan.c.idMinat.in_(minat_ids)
-                    )
-                ).scalars().all()
-                kegiatan_by_minat = set(result)
-            
-            kegiatan_by_bakat = set()
-            if bakat_ids:
-                result = db.execute(
-                    select(Kegiatan)
-                    .join(bakatKegiatan, Kegiatan.idKegiatan == bakatKegiatan.c.idKegiatan)
-                    .where(
-                        Kegiatan.status_kegiatan == "approved",
-                        Kegiatan.waktu > now,
-                        bakatKegiatan.c.idBakat.in_(bakat_ids)
-                    )
-                ).scalars().all()
-                kegiatan_by_bakat = set(result)
+            kegiatan_prioritas.update(result)
+        
+        if bakat_ids:
+            result = db.execute(
+                select(Kegiatan)
+                .join(bakatKegiatan, Kegiatan.idKegiatan == bakatKegiatan.c.idKegiatan)
+                .where(
+                    Kegiatan.status_kegiatan == "approved",
+                    Kegiatan.waktu > now,
+                    bakatKegiatan.c.idBakat.in_(bakat_ids)
+                )
+            ).scalars().all()
+            kegiatan_prioritas.update(result)
 
-            kegiatan_list = list(kegiatan_by_minat | kegiatan_by_bakat)
-            kegiatan_list.sort(key=lambda x: x.waktuDiupload, reverse=True)
-            
-        except Exception as e:
-            print(f"ERROR : {e}")
-            response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
-            return {"message": "error pada sambungan database"}
+        semua_kegiatan = db.execute(
+            select(Kegiatan).where(
+                Kegiatan.status_kegiatan == "approved",
+                Kegiatan.waktu > now
+            )
+        ).scalars().all()
+
+        prioritas_ids = {k.idKegiatan for k in kegiatan_prioritas}
+        kegiatan_sisa = [k for k in semua_kegiatan if k.idKegiatan not in prioritas_ids]
+
+        kegiatan_prioritas_list = list(kegiatan_prioritas)
+
+        if sort == "popular":
+            kegiatan_prioritas_list.sort(key=lambda x: x.views, reverse=True)
+            kegiatan_sisa.sort(key=lambda x: x.views, reverse=True)
+        elif sort == "latest":
+            kegiatan_prioritas_list.sort(key=lambda x: x.waktu)
+            kegiatan_sisa.sort(key=lambda x: x.waktu)
+
+        kegiatan_list = kegiatan_prioritas_list + kegiatan_sisa
+
+    except Exception as e:
+        print(f"ERROR : {e}")
+        response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
+        return {"message": "error pada sambungan database"}
 
     if not kegiatan_list:
         return []
@@ -432,6 +457,49 @@ def get_fyp_kegiatan(
         })
     
     return data
+
+
+@router.get("/pending", response_model=List[JSONKegiatanCard], summary="Get Pending Kegiatan (Admin Pengawas Only)")
+def get_pending_kegiatan(
+    response: Response,
+    user: Annotated[dict, Depends(validate_token)],
+    db: Session = Depends(get_db)
+):
+    if user["role"] != "AdminPengawas":
+        response.status_code = status.HTTP_403_FORBIDDEN
+        return {"message": "Hanya admin pengawas yang dapat mengakses endpoint ini"}
+
+    try:
+        kegiatan_list = db.execute(
+            select(Kegiatan)
+            .where(Kegiatan.status_kegiatan == "Pending")
+            .order_by(Kegiatan.waktuDiupload.desc())
+        ).scalars().all()
+    except Exception as e:
+        print(f"ERROR : {e}")
+        response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
+        return {"message": "error pada sambungan database"}
+
+    if not kegiatan_list:
+        return []
+
+    data = []
+    for k in kegiatan_list:
+        data.append({
+            "idKegiatan": k.idKegiatan,
+            "nama": k.nama,
+            "jenis": k.jenis,
+            "nama_instansi": k.instansi.nama,
+            "TAK_wajib": k.TAK_wajib,
+            "waktu": k.waktu,
+            "waktuDiupload": k.waktuDiupload,
+            "views": k.views,
+            "minat": [{"idMinat": m.idMinat, "nama_minat": m.nama} for m in k.minat_list],
+            "bakat": [{"idBakat": b.idBakat, "nama_bakat": b.nama} for b in k.bakat_list]
+        })
+    
+    return data
+
 
 @router.get("/{idKegiatan}", response_model=JSONKegiatanDetail, summary="Get Detail Kegiatan")
 def get_detail_kegiatan(
@@ -481,3 +549,5 @@ def get_detail_kegiatan(
         print(f"ERROR : {e}")
         response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
         return {"message": "error pada sambungan database"}
+
+

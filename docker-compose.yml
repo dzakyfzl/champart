@@ -5,6 +5,8 @@ services:
     image: mysql:8.0
     container_name: champart_mysql
     restart: always
+    ports:
+      - "3307:3306"
     environment:
       MYSQL_USER: ${MYSQL_USER}
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
@@ -12,7 +14,7 @@ services:
       MYSQL_DATABASE: ${MYSQL_DATABASE}
     volumes:
       - mysql_data:/var/lib/mysql
-      - ./Database:/docker-entrypoint-initdb.d
+      - ./BE_ChamPart_TAK/Database:/docker-entrypoint-initdb.d  
     networks:
       - champart_network
     healthcheck:
@@ -22,7 +24,7 @@ services:
       retries: 20
 
   app:
-    build: ./BE_Champart_TAK
+    build: ./BE_ChamPart_TAK  
     container_name: champart_api
     restart: always
     ports:
@@ -42,19 +44,18 @@ services:
       ADMIN_USERNAME: ${ADMIN_USERNAME}
       ADMIN_EMAIL: ${ADMIN_EMAIL}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD}
-
     depends_on:
       db:
         condition: service_healthy
     volumes:
-      - ./app:/app/app
-      - ./media:/media
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+       - ./BE_ChamPart_TAK:/app  
+       - /app/__pycache__ 
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --reload-delay 1
     networks:
       - champart_network
 
   cron:
-    build: ./BE_Champart_TAK/cron
+    build: ./BE_ChamPart_TAK/cron
     container_name: champart_cron
     restart: always
     environment:
@@ -68,7 +69,7 @@ services:
     build: ./FE_ChamPart_Website-TAK
     container_name: champart_frontend
     restart: always
-    command: ["npm", "run", "dev", "--", "--host", "--port=4173"]   # dev mode
+    command: ["npm", "run", "dev", "--", "--host", "--port=4173"]
     ports:
       - "4173:4173"
     volumes:
@@ -94,7 +95,6 @@ services:
 
 volumes:
   mysql_data:
-
 
 networks:
   champart_network:

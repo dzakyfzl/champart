@@ -33,8 +33,101 @@ function AdminPengawas() {
   const [activities, setActivities] = useState([])
   const [institutions, setInstitutions] = useState([])
   const [secretCodes, setSecretCodes] = useState([])
+  const [pendingCount, setPendingCount] = useState(0)
  
-  useEffect(() => { setLoading(false) }, [])
+  useEffect(() => { 
+    const fetchPendingActivities = async () => {
+      try {
+        setLoading(true)
+        const token = localStorage.getItem('access_token')
+        
+        const res = await fetch('/api/kegiatan/pending', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        })
+        
+        const data = await res.json()
+        console.log('Pending activities:', data)
+        
+        if (res.ok) {
+          const mappedActivities = data.map(k => ({
+          id: k.idKegiatan,
+          nama: k.nama,
+          jenis: k.jenis,
+          instansi: k.nama_instansi,
+          tanggal: new Date(k.waktu).toLocaleDateString('id-ID', { 
+            day: 'numeric', 
+            month: 'long', 
+            year: 'numeric' 
+          }),
+          waktu: new Date(k.waktu).toLocaleTimeString('id-ID', { 
+            hour: '2-digit', 
+            minute: '2-digit' 
+          }),
+          lokasi: k.lokasi || '-',
+          pemohon: k.nama_instansi, // Atau ambil dari data admin instansi
+          status: 'Pending',
+          deskripsi: k.deskripsi || '-',
+          TAK_wajib: k.TAK_wajib,
+          views: k.views,
+          minat: k.minat,
+          bakat: k.bakat,
+          waktuDiupload: new Date(k.waktuDiupload).toLocaleDateString('id-ID')
+        }))
+        
+        setActivities(mappedActivities)
+        setPendingCount(mappedActivities.length)
+        } else {
+          setError(data.message || 'Gagal mengambil data kegiatan pending')
+        }
+      } catch (err) {
+        console.error('Error fetching pending activities:', err)
+        setError('Terjadi kesalahan saat mengambil data')
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchPendingActivities()
+   }, [])
+
+
+useEffect(() => {
+  const fetchPendingInstitutions = async () => {
+    try {
+      const token = localStorage.getItem('access_token')
+      
+      const res = await fetch('/api/calon/instansi/get', {  
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+      
+      const result = await res.json()
+      console.log('Calon Instansi:', result)
+      
+      if (res.ok&& result.data) {
+        const mappedInstitutions = result.data.map(inst => ({
+          id: inst.idCalonInstansi,
+          nama: inst.nama,
+          jenis: inst.jenis,
+          alamat: inst.alamat,
+          email: inst.email,
+          status: 'Menunggu',  
+          tanggalPengajuan: new Date(inst.createdAt || Date.now()).toLocaleDateString('id-ID')
+        }))
+        
+        setInstitutions(mappedInstitutions)
+      } else {
+        console.error('Error fetching institutions:', data.message)
+      }
+    } catch (err) {
+      console.error('Error fetching institutions:', err)
+    }
+  }
+  
+  fetchPendingInstitutions()
+}, [])
 
   function pushToast(message, type = 'info') {
     const id = Math.random().toString(36).slice(2)
@@ -58,60 +151,132 @@ function AdminPengawas() {
 
 
   async function approveActivity(item) {
-    if (settings.moderation.requireNoteOnApprove) {
-      let note = ''
-      const Content = () => (
-        <div className="space-y-3">
-          <div>Masukkan catatan persetujuan untuk <b>{item.nama}</b>.</div>
-          <input className="w-full border rounded px-3 py-2" placeholder="Catatan persetujuan" onChange={e => note = e.target.value} />
-        </div>
-      )
-      openConfirm({
-        title: 'Setujui Kegiatan',
-        content: <Content />,
-        onConfirm: async () => {
-          const prev = activities
-          setActivities(p => p.map(a => a.id === item.id ? { ...a, status: 'Disetujui' } : a))
-          pushToast('Kegiatan disetujui')
-          closeConfirm()
-        }
-      })
-    } else {
-      openConfirm({
-        title: 'Setujui Kegiatan',
-        content: <div>Anda akan menyetujui <b>{item.nama}</b> oleh <b>{item.instansi}</b>.</div>,
-        onConfirm: async () => {
-          const prev = activities
-          setActivities(p => p.map(a => a.id === item.id ? { ...a, status: 'Disetujui' } : a))
-          pushToast('Kegiatan disetujui')
-          closeConfirm()
-        }
-      })
-    }
-  }
-
-  function rejectActivity(item) {
-    let alasan = ''
+  if (settings.moderation.requireNoteOnApprove) {
+    let note = ''
     const Content = () => (
       <div className="space-y-3">
-        <div>Masukkan alasan penolakan untuk <b>{item.nama}</b>.</div>
-        <input className="w-full border rounded px-3 py-2" placeholder="Alasan penolakan" onChange={e => alasan = e.target.value} />
+        <div>Masukkan catatan persetujuan untuk <b>{item.nama}</b>.</div>
+        <input className="w-full border rounded px-3 py-2" placeholder="Catatan persetujuan" onChange={e => note = e.target.value} />
       </div>
     )
     openConfirm({
-      title: 'Tolak Kegiatan',
+      title: 'Setujui Kegiatan',
       content: <Content />,
-      danger: true,
-      confirmText: 'Tolak',
       onConfirm: async () => {
-        if (settings.moderation.requireReasonOnReject && !alasan.trim()) { pushToast('Alasan penolakan wajib', 'error'); return }
-        const prev = activities
-        setActivities(p => p.map(a => a.id === item.id ? { ...a, status: 'Ditolak' } : a))
-        pushToast('Kegiatan ditolak')
+        try {
+          const token = localStorage.getItem('access_token')
+          const res = await fetch(`/api/approve/kegiatan/${item.id}`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ status: 'approved' })
+          })
+          
+          if (res.ok) {
+            setActivities(p => p.filter(a => a.id !== item.id))
+            setPendingCount(prev => prev - 1)
+            pushToast('Kegiatan disetujui', 'success')
+          } else {
+            const data = await res.json()
+            pushToast(data.message || 'Gagal menyetujui kegiatan', 'error')
+          }
+        } catch (err) {
+          console.error('Error approving activity:', err)
+          pushToast('Terjadi kesalahan', 'error')
+        }
+        closeConfirm()
+      }
+    })
+  } else {
+    openConfirm({
+      title: 'Setujui Kegiatan',
+      content: <div>Anda akan menyetujui <b>{item.nama}</b> oleh <b>{item.instansi}</b>.</div>,
+      onConfirm: async () => {
+        try {
+          const token = localStorage.getItem('access_token')
+          const res = await fetch(`/api/approve/kegiatan/${item.id}`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ status: 'approved' })
+          })
+          
+          if (res.ok) {
+            setActivities(p => p.filter(a => a.id !== item.id))
+            setPendingCount(prev => prev - 1)
+            pushToast('Kegiatan disetujui', 'success')
+          } else {
+            const data = await res.json()
+            pushToast(data.message || 'Gagal menyetujui kegiatan', 'error')
+          }
+        } catch (err) {
+          console.error('Error approving activity:', err)
+          pushToast('Terjadi kesalahan', 'error')
+        }
         closeConfirm()
       }
     })
   }
+}
+
+function rejectActivity(item) {
+  let alasan = ''
+  const Content = () => (
+    <div className="space-y-3">
+      <div>Masukkan alasan penolakan untuk <b>{item.nama}</b>.</div>
+      <textarea 
+        className="w-full border rounded px-3 py-2" 
+        placeholder="Alasan penolakan" 
+        rows="3"
+        onChange={e => alasan = e.target.value} 
+      />
+    </div>
+  )
+  openConfirm({
+    title: 'Tolak Kegiatan',
+    content: <Content />,
+    danger: true,
+    confirmText: 'Tolak',
+    onConfirm: async () => {
+      if (settings.moderation.requireReasonOnReject && !alasan.trim()) { 
+        pushToast('Alasan penolakan wajib', 'error')
+        return 
+      }
+      
+      try {
+        const token = localStorage.getItem('access_token')
+        const res = await fetch(`/api/approve/kegiatan/${item.id}`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ 
+            status: 'rejected',
+            alasan: alasan 
+          })
+        })
+        
+        if (res.ok) {
+          setActivities(p => p.filter(a => a.id !== item.id))
+          setPendingCount(prev => prev - 1)
+          pushToast('Kegiatan ditolak', 'success')
+        } else {
+          const data = await res.json()
+          pushToast(data.message || 'Gagal menolak kegiatan', 'error')
+        }
+      } catch (err) {
+        console.error('Error rejecting activity:', err)
+        pushToast('Terjadi kesalahan', 'error')
+      }
+      closeConfirm()
+    }
+  })
+}
 
 
   function openActivityDetail(item) {
@@ -224,7 +389,14 @@ function AdminPengawas() {
         <div className="w-12 h-px bg-gray-200 my-3"></div>
         <nav className="flex-1 flex flex-col items-center gap-3">
           <NavButton title="Dashboard" active={tab===tabs[0]} onClick={()=>setTab(tabs[0])}><IconHome /></NavButton>
-          <NavButton title="Kegiatan" active={tab===tabs[1]} onClick={()=>setTab(tabs[1])}><IconActivity /></NavButton>
+          <NavButton title="Kegiatan" active={tab===tabs[1]} onClick={()=>setTab(tabs[1])}>
+            <IconActivity />
+            {pendingCount > 0 && (
+              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                {pendingCount}
+              </span>
+            )}
+          </NavButton>
           <NavButton title="Instansi" active={tab===tabs[2]} onClick={()=>setTab(tabs[2])}><IconBuilding /></NavButton>
           <NavButton title="Calon Admin" active={tab===tabs[3]} onClick={()=>setTab(tabs[3])}><IconUserPlus /></NavButton>
           <NavButton title="Secret Code" active={tab===tabs[4]} onClick={()=>setTab(tabs[4])}><IconKey /></NavButton>
@@ -251,7 +423,7 @@ function AdminPengawas() {
         </header>
         <section className="p-4 overflow-y-auto flex-1">
           {error && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-2 rounded mb-4">{error}</div>}
-          {tab===tabs[0] && <Dashboard activities={activities} institutions={institutions} secretCodes={secretCodes} />}
+          {tab===tabs[0] && <Dashboard activities={activities} institutions={institutions} secretCodes={secretCodes} pendingCount={pendingCount} />}
           {tab===tabs[1] && <Activities loading={loading} activities={activities} onViewDetail={openActivityDetail} onApprove={approveActivity} onReject={rejectActivity} />}
           {tab===tabs[2] && <Institutions />}
           {tab===tabs[3] && <Candidates />}

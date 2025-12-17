@@ -81,3 +81,25 @@ def ambil_calon_instansi_edit(response:Response, user: Annotated[dict, Depends(v
         data.append({"idCalonInstansi":q[0],"email":q[1],"nama":q[2],"jenis":q[3],"alamat":q[4]})
 
     return {"message":"data calon instansi ditemukan","data":data}
+
+
+@router.get("/instansi/get")
+def ambil_semua_calon_instansi(response:Response, user: Annotated[dict, Depends(validate_token)],db:Session = Depends(get_db)):
+    if user["role"] != "AdminPengawas":
+        response.status_code = status.HTTP_401_UNAUTHORIZED
+        return {"message":"anda tidak dapat mengunakan layanan ini"}
+    data=[]
+    query=None
+    try:
+        query=db.execute(select(CalonInstansi.idCalonInstansi,CalonInstansi.email_pengaju,CalonInstansi.nama,CalonInstansi.jenis,CalonInstansi.alamat,CalonInstansi.jenis_calon).order_by(CalonInstansi.idCalonInstansi.desc())).all()
+    except Exception as e:
+        print(f"ERROR : {e}")
+        response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
+        return {"message":"error pada sambungan database"}
+    if not query:
+        return {"message":"data calon instansi kosong"}
+    
+    for q in query:
+        data.append({"idCalonInstansi":q[0],"email":q[1],"nama":q[2],"jenis":q[3],"alamat":q[4],"jenis_calon":q[5]})
+
+    return {"message":"data calon instansi ditemukan","data":data}
