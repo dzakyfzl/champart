@@ -56,7 +56,7 @@ function EditPassword() {
         <nav className="space-y-2">
           <a href="/editprofile" className="block rounded-md px-4 py-3 hover:bg-gray-100">Pengaturan Informasi Akun</a>
           <a className="block rounded-md px-4 py-3 bg-[#F2E9DB]">Pengaturan Keamanan</a>
-          <a href="/editemail" className="block rounded-md px-4 py-3 hover:bg-gray-100">Pengaturan Email</a>
+          <a href="/hapusakun" className="block rounded-md px-4 py-3 hover:bg-gray-100">Hapus Akun</a>
         </nav>
       </aside>
 

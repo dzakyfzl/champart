@@ -21,6 +21,7 @@ class JSONKegiatanCard(BaseModel):
     jenis: str
     nama_instansi: str
     TAK_wajib: bool
+    status_kegiatan: str
     waktu: datetime
     waktuDiupload: datetime
     views: int

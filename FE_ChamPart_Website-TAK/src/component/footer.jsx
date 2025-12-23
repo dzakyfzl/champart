@@ -1,6 +1,6 @@
 function Footer(){
     return (
-    <footer className="bg-teal-200">
+    <footer className="bg-teal-200 w-full">
       <div className="max-w-7xl mx-auto px-4 py-10 text-center text-gray-700">
         <p>© 2025 Champart. All rights reserved.</p>
       </div>

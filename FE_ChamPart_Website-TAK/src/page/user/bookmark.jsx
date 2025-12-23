@@ -8,6 +8,7 @@ function Bookmark() {
   const navigate = useNavigate()
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
+  const [imageMap, setImageMap] = useState({})
 
   useEffect(() => {
     const fetchBookmarks = async () => {
@@ -33,6 +34,31 @@ function Bookmark() {
     fetchBookmarks()
   }, [])
 
+  useEffect(() => {
+    const loadImages = async () => {
+      const token2 = localStorage.getItem('access_token') || ''
+      const headers = token2 ? { Authorization: `Bearer ${token2}` } : {}
+      const needed = Array.isArray(items) ? items.filter(it => !(it?.idKegiatan in imageMap)) : []
+      for (const it of needed) {
+        const id = Number(it?.idKegiatan)
+        if (!Number.isFinite(id) || id <= 0) continue
+        try {
+          const rDetail = await fetch(`/api/kegiatan/${id}?skip_views=true`, { headers })
+          let jDetail = null; try { jDetail = await rDetail.json() } catch {}
+          if (!rDetail.ok) continue
+          const idLamp = Number(jDetail?.lampiran?.idLampiran)
+          if (Number.isFinite(idLamp) && idLamp > 0) {
+            const rFile = await fetch(`/api/file/get/${idLamp}`, { headers })
+            const blob = await rFile.blob()
+            const url = URL.createObjectURL(blob)
+            setImageMap(prev => ({ ...prev, [id]: url }))
+          }
+        } catch {}
+      }
+    }
+    if (items.length > 0) loadImages()
+  }, [items])
+
   const formatTanggal = (dateString) => {
     return new Date(dateString).toLocaleDateString('id-ID', { 
       weekday: 'long', 
@@ -42,7 +68,7 @@ function Bookmark() {
     })
   }
 
-  const formatWaktuSimpan = (dateString) => {
+  const formatWaktuDeadline = (dateString) => {
     const date = new Date(dateString)
     return `${date.toLocaleDateString('id-ID')} at ${date.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })} WIB`
   }
@@ -54,9 +80,9 @@ function Bookmark() {
           <img src={Back} alt="Back" 
             onClick={() => navigate('/')}
             className="h-8 w-8 cursor-pointer" />
-          <span className="text-2xl font-semibold text-center">Bookmark</span>
+          <span className="text-2xl font-semibold">Bookmark</span>
         </div>
-        <div className="text-center py-10">Loading...</div>
+        <div className="py-10">Loading...</div>
       </div>
     )
   }
@@ -67,11 +93,11 @@ function Bookmark() {
         <img src={Back} alt="Back" 
           onClick={() => navigate('/')}
           className="h-8 w-8 cursor-pointer" />
-        <span className="text-2xl font-semibold text-center">Bookmark</span>
+        <span className="text-2xl font-semibold">Bookmark</span>
       </div>
 
       {items.length === 0 ? (
-        <div className="text-center py-10 text-gray-500">
+        <div className="py-6 text-gray-500">
           Belum ada kegiatan yang disimpan
         </div>
       ) : (
@@ -79,7 +105,7 @@ function Bookmark() {
           {items.map((item) => (
             <div key={item.idKegiatan} className="space-y-2">
               <Card
-                gambar="https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=1200&auto=format&fit=crop"
+                gambar={imageMap[item.idKegiatan] || "https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=1200&auto=format&fit=crop"}
                 judul={item.nama_kegiatan}
                 instansi={item.nama_instansi}
                 tanggal={formatTanggal(item.waktu_kegiatan)}
@@ -89,7 +115,7 @@ function Bookmark() {
                 onClick={() => navigate(`/kegiatan/${item.idKegiatan}`)}
               />
               <div className="text-center text-sm text-gray-700">
-                Disimpan: {formatWaktuSimpan(item.waktu_disimpan)}
+                Deadline: {formatWaktuDeadline(item.waktu_kegiatan)}
               </div>
             </div>
           ))}

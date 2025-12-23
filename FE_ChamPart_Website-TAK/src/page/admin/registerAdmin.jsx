@@ -62,11 +62,24 @@ function RegisterAdmin() {
           passkey: formData.passkey
         }
       }
-      const url = role === 'Admin Pengawas' ? '/api/account/admin-pengawas/register' : '/api/account/admin-instansi/register'
-      const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+      let res = null
       let j = null
-      try { j = await res.json() } catch {}
-      if (!res.ok) throw new Error(j?.message || `HTTP ${res.status}`)
+      if (role === 'Admin Pengawas') {
+        const url1 = '/api/accout/admin-pengawas/register'
+        res = await fetch(url1, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+        try { j = await res.json() } catch {}
+        if (!res.ok) {
+          const url2 = '/api/account/admin-pengawas/register'
+          res = await fetch(url2, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+          try { j = await res.json() } catch {}
+          if (!res.ok) throw new Error(j?.message || `HTTP ${res.status}`)
+        }
+      } else {
+        const url = '/api/account/admin-instansi/register'
+        res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+        try { j = await res.json() } catch {}
+        if (!res.ok) throw new Error(j?.message || `HTTP ${res.status}`)
+      }
       alert(j?.message || 'Berhasil mendaftar')
       navigate('/login')
     } catch (err) {

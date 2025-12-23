@@ -91,13 +91,16 @@ def info_akun(response:Response, user: Annotated[dict, Depends(validate_token)],
             query = db.execute(select(AdminPengawas.email,AdminPengawas.jabatan,AdminPengawas.idLampiran).select_from(AdminPengawas).where(AdminPengawas.username==user['username'])).first()
         elif user["role"] == "AdminInstansi":
             query = db.execute(select(AdminInstansi.email,AdminInstansi.jabatan,AdminInstansi.idInstansi,AdminInstansi.idLampiran).select_from(AdminInstansi).where(AdminInstansi.username==user['username'])).first()
+            if not query:
+                response.status_code = status.HTTP_400_BAD_REQUEST
+                return {"message":"user tidak ditemukan"}
             query2 = db.execute(select(Instansi.nama).select_from(Instansi).where(Instansi.idInstansi==query[2])).first()
         else:
-            response.status_code = status.HTTP_400_BAD_REQUEST,
+            response.status_code = status.HTTP_400_BAD_REQUEST
             return {"message":"role tidak valid"}
 
     except Exception:
-        response.status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
         return {"message":"Masalah pada sambungan database"}
     
     if not query and not query2:
@@ -173,11 +176,11 @@ def edit_password(password: JSONUpdatePassword, response:Response, user: Annotat
 def hapus_akun(password: JSONPassword, response:Response, user: Annotated[dict, Depends(validate_token)],db:Session = Depends(get_db)):
     try:
         if user["role"] == 'Pengguna':
-            stmt = select(Pengguna.username,Pengguna.salt,Pengguna.hashed_password).select_from(Pengguna).where(Pengguna.username==user["username"])
+            stmt = select(Pengguna.username,Pengguna.salt,Pengguna.hashed_password, Pengguna.idPengguna, Pengguna.idLampiran).select_from(Pengguna).where(Pengguna.username==user["username"])
         elif user["role"] == 'AdminInstansi':
-            stmt = select(AdminInstansi.username,AdminInstansi.salt,AdminInstansi.hashed_password).select_from(AdminInstansi).where(AdminInstansi.username==user["username"])
+            stmt = select(AdminInstansi.username,AdminInstansi.salt,AdminInstansi.hashed_password, AdminInstansi.idAdminInstansi).select_from(AdminInstansi).where(AdminInstansi.username==user["username"])
         elif user["role"] == 'AdminPengawas':
-            stmt = select(AdminPengawas.username,AdminPengawas.salt,AdminPengawas.hashed_password).select_from(AdminPengawas).where(AdminPengawas.username==user["username"])
+            stmt = select(AdminPengawas.username,AdminPengawas.salt,AdminPengawas.hashed_password, AdminPengawas.idAdminPengawas).select_from(AdminPengawas).where(AdminPengawas.username==user["username"])
         else:
             response.status_code = status.HTTP_400_BAD_REQUEST
             return {"message":"akun di role ini tidak ditemukan"}
@@ -201,19 +204,55 @@ def hapus_akun(password: JSONPassword, response:Response, user: Annotated[dict, 
 
     try:
         if user["role"] == 'Pengguna':
-            stmt = delete(Pengguna).where(Pengguna.username==user["username"])
-        elif user["role"] == 'AdminInstansi':
-            stmt = delete(AdminInstansi).where(AdminInstansi.username==user["username"])
+            id_pengguna = query[3]
+            id_lamp = query[4]
+            try:
+                db.execute(delete(Simpan).where(Simpan.idPengguna==id_pengguna))
+                db.execute(delete(minatPengguna).where(minatPengguna.c.idPengguna==id_pengguna))
+                db.execute(delete(bakatPengguna).where(bakatPengguna.c.idPengguna==id_pengguna))
+            except Exception as e:
+                print(f"ERROR : {e}")
+                response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
+                return {"message":"error menghapus relasi pengguna"}
+            db.execute(delete(Pengguna).where(Pengguna.idPengguna==id_pengguna))
+            db.execute(delete(RefreshToken).where(RefreshToken.username==user["username"]))
+            db.commit()
+            if id_lamp:
+                try:
+                    db.execute(delete(Lampiran).where(Lampiran.idLampiran==id_lamp))
+                    db.commit()
+                except Exception as e:
+                    print(f"ERROR : {e}")
+                    # tidak fatal, lampiran bisa dihapus manual
         elif user["role"] == 'AdminPengawas':
-            stmt = delete(AdminPengawas).where(AdminPengawas.username==user["username"])
+            id_admin_pengawas = query[3]
+            try:
+                db.execute(update(Kegiatan).where(Kegiatan.idAdminPengawas==id_admin_pengawas).values(idAdminPengawas=None))
+                db.commit()
+            except Exception as e:
+                print(f"ERROR : {e}")
+                response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
+                return {"message":"error melepaskan relasi admin pengawas dari kegiatan"}
+            db.execute(delete(AdminPengawas).where(AdminPengawas.idAdminPengawas==id_admin_pengawas))
+            db.execute(delete(RefreshToken).where(RefreshToken.username==user["username"]))
+            db.commit()
+        elif user["role"] == 'AdminInstansi':
+            id_admin_instansi = query[3]
+            try:
+                cnt = db.execute(select(func.count('*')).select_from(Kegiatan).where(Kegiatan.idAdminInstansi==id_admin_instansi)).first()
+            except Exception as e:
+                print(f"ERROR : {e}")
+                response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
+                return {"message":"error memeriksa kegiatan terkait admin instansi"}
+            if cnt and cnt[0] > 0:
+                response.status_code = status.HTTP_400_BAD_REQUEST
+                return {"message":"akun tidak dapat dihapus karena masih memiliki kegiatan"}
+            db.execute(delete(AdminInstansi).where(AdminInstansi.idAdminInstansi==id_admin_instansi))
+            db.execute(delete(RefreshToken).where(RefreshToken.username==user["username"]))
+            db.commit()
         else:
             response.status_code = status.HTTP_400_BAD_REQUEST
             return {"message":"akun di role ini tidak ditemukan"}
-
-        db.execute(stmt)
-        db.execute(delete(RefreshToken).where(RefreshToken.username==user["username"]))
-        db.commit()
-
     except Exception as e:
         print(f"ERROR : {e}")
         response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR

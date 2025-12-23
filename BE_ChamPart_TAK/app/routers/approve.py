@@ -172,23 +172,30 @@ def approve_pendaftaran_admin_instansi(request: JSONApproveAdmin,bg_tasks:Backgr
 
 @router.post('/admin-pengawas',status_code=200)
 def approve_pendaftaran_admin_pengawas(request: JSONApproveAdminPengawas,bg_tasks:BackgroundTasks,user: Annotated[dict, Depends(validate_token)], response : Response, db:Session = Depends(get_db)):
-
     if user["role"] != "AdminPengawas":
         response.status_code = status.HTTP_401_UNAUTHORIZED
         return {"message":"anda tidak dapat mengunakan layanan ini"}
-    if request.isApproved:
-        hashed_passkey = generate_pass(request.unique_character,request.email,"AdminPengawas")
-
-        try:
-            db.execute(insert(Passkey).values(isiPasskey=hashed_passkey,idInstansi=request.idInstansi))
-        except Exception as e:
-            print(f"ERROR : {e}")
-            response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
-            return {"message":"error pada sambungan database"}
+    
+    hashed_passkey = generate_pass(request.unique_character,request.email,"AdminPengawas")
+    try:
+        existed = db.execute(select(Passkey.isiPasskey).where(Passkey.isiPasskey==hashed_passkey)).first()
+        if not existed:
+            db.execute(insert(Passkey).values(isiPasskey=hashed_passkey,email=request.email))
+        else:
+            db.execute(update(Passkey).where(Passkey.isiPasskey==hashed_passkey).values(email=request.email))
+        db.commit()
+    except Exception as e:
+        print(f"ERROR : {e}")
+        response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
+        return {"message":"error pada sambungan database"}
+    
+    try:
         isi = f"Selamat, akun anda dengan email {request.email} telah diterima sebagai admin pengawas \n\nPasskey : {request.unique_character} \n\nPERINGATAN : Jangan sebarkan Passkey ke siapapun"
         bg_tasks.add_task(send_email,"CHAMPART -  Akun anda berhasil di approve",isi,request.email)
-        message = {"message":f"sukses mengapprove {request.email} menjadi admin pengawas"}
-    return message
+    except Exception:
+        pass
+    
+    return {"message":f"sukses mengapprove {request.email} menjadi admin pengawas"}
 
 @router.post('/kegiatan/{id}',status_code=200)
 def change_kegiatan_status(id: int, request: JSONChangeStatus, user: Annotated[dict, Depends(validate_token)], response: Response, db: Session = Depends(get_db)):

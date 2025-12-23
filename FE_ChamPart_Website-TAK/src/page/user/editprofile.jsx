@@ -137,6 +137,11 @@ function Profile() {
 
   const handleEditPengguna = async () => {
     try {
+      const hasAvatar = !!avatarFile || !!original?.avatarId || (typeof avatar === 'string' && avatar.length > 0)
+      if (!hasAvatar) {
+        alert("Foto profil wajib diunggah")
+        return
+      }
       const res = await fetch("/api/account/pengguna/edit", {
       method: "POST",
       headers: {
@@ -191,7 +196,7 @@ function Profile() {
         }
       }
 
-      alert("Profil, minat, dan bakat berhasil diperbarui")
+      alert("Pengeditan akun berhasil")
       window.location.reload();
       setShowPassModal(false)
       setIsEditing(false)
@@ -241,7 +246,7 @@ function Profile() {
         <nav className="space-y-2">
           <a className="block rounded-md px-4 py-3 bg-[#F2E9DB]">Pengaturan Informasi Akun</a>
           <a href="/editpassword" className="block rounded-md px-4 py-3 hover:bg-gray-100">Pengaturan Keamanan</a>
-          <a href="/editemail" className="block rounded-md px-4 py-3 hover:bg-gray-100">Pengaturan Email</a>
+          <a href="/hapusakun" className="block rounded-md px-4 py-3 hover:bg-gray-100">Hapus Akun</a>
         </nav>
       </aside>
 

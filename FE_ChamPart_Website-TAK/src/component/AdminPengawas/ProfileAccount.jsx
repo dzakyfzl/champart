@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 
 export default function ProfileAccount() {
   const [loading, setLoading] = useState(true)
@@ -8,6 +9,9 @@ export default function ProfileAccount() {
   const [isEditing, setIsEditing] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
   const [confirmPassword, setConfirmPassword] = useState('')
+  const [showDelete, setShowDelete] = useState(false)
+  const [deletePassword, setDeletePassword] = useState('')
+  const [deleting, setDeleting] = useState(false)
 
   const [username, setUsername] = useState('')
   const [email, setEmail] = useState('')
@@ -16,6 +20,7 @@ export default function ProfileAccount() {
   const [avatarFile, setAvatarFile] = useState(null)
   const [original, setOriginal] = useState(null)
   const fileInputRef = useRef(null)
+  const navigate = useNavigate()
 
   function dataUrlToFile(dataUrl, filename){ const arr=dataUrl.split(','); const mime=(arr[0].match(/:(.*?);/)||[])[1]||'image/jpeg'; const bstr=atob(arr[1]); let n=bstr.length; const u8=new Uint8Array(n); while(n--) u8[n]=bstr.charCodeAt(n); return new File([u8], filename, { type: mime }) }
   async function compressImage(file){ return new Promise((resolve,reject)=>{ const url = URL.createObjectURL(file); const img = new Image(); img.onload = ()=>{ const maxDim=1024; const scale = Math.min(1, maxDim/Math.max(img.width, img.height)); const w = Math.round(img.width*scale); const h = Math.round(img.height*scale); const c=document.createElement('canvas'); c.width=w; c.height=h; const ctx=c.getContext('2d'); ctx.drawImage(img,0,0,w,h); let q=0.88; let out=c.toDataURL('image/jpeg', q); const base='data:image/jpeg;base64,'; function sizeOf(d){ return Math.ceil((d.length - base.length)*3/4) } while(sizeOf(out) > 900*1024 && q > 0.5){ q-=0.08; out=c.toDataURL('image/jpeg', q) } URL.revokeObjectURL(url); resolve({ dataUrl: out, file: dataUrlToFile(out, (file.name||'avatar').replace(/\.(png|jpeg|jpg|webp)$/i,'.jpg')) }) }; img.onerror=reject; img.src=url }) }
@@ -117,6 +122,30 @@ export default function ProfileAccount() {
     }
   }
 
+  async function submitDelete() {
+    try {
+      setDeleting(true)
+      setError('')
+      setSuccess('')
+      const token = localStorage.getItem('access_token') || ''
+      const headers = { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) }
+      const body = { password: String(deletePassword || '') }
+      if (!body.password) throw new Error('Password wajib diisi')
+      const res = await fetch('/api/account/delete', { method: 'POST', headers, body: JSON.stringify(body) })
+      let j = null
+      try { j = await res.json() } catch {}
+      if (!res.ok) throw new Error(j?.message || `HTTP ${res.status}`)
+      localStorage.removeItem('access_token')
+      localStorage.removeItem('refresh_token')
+      alert('Penghapusan Akun Berhasil')
+      navigate('/login')
+    } catch (e) {
+      setError(typeof e?.message === 'string' ? e.message : 'Gagal menghapus akun')
+    } finally {
+      setDeleting(false)
+    }
+  }
+
   return (
     <div className="grid md:grid-cols-2 gap-4">
       <div className="bg-white rounded-xl shadow p-4">
@@ -158,7 +187,10 @@ export default function ProfileAccount() {
         </div>
         <div className="mt-4 flex items-center justify-end gap-2">
           {!isEditing && (
-            <button className="px-4 py-2 rounded bg-blue-600 text-white" onClick={()=>{ setIsEditing(true); setOriginal({ username, email, jabatan, avatar }) }}>Edit</button>
+            <>
+              <button className="px-4 py-2 rounded border border-red-600 text-red-600" onClick={()=>{ setShowDelete(true); setShowConfirm(false) }}>Hapus Akun</button>
+              <button className="px-4 py-2 rounded bg-blue-600 text-white" onClick={()=>{ setIsEditing(true); setOriginal({ username, email, jabatan, avatar }) }}>Edit</button>
+            </>
           )}
           {isEditing && (
             <>
@@ -174,6 +206,16 @@ export default function ProfileAccount() {
             <div className="flex gap-2 mt-3">
               <button className="px-4 py-2 rounded bg-green-600 text-white" disabled={saving || !confirmPassword} onClick={submitEdit}>{saving ? 'Menyimpan…' : 'Konfirmasi'}</button>
               <button className="px-4 py-2 rounded border" disabled={saving} onClick={()=>{ setShowConfirm(false); setConfirmPassword('') }}>Batal</button>
+            </div>
+          </div>
+        )}
+        {showDelete && (
+          <div className="mt-4 border rounded p-3">
+            <div className="text-sm font-medium mb-1 text-red-700">Hapus Akun</div>
+            <input type="password" className="w-full border rounded px-3 py-2" placeholder="Masukkan password" value={deletePassword} onChange={e=>setDeletePassword(e.target.value)} disabled={deleting} />
+            <div className="flex gap-2 mt-3">
+              <button className="px-4 py-2 rounded bg-red-600 text-white" disabled={deleting || !deletePassword} onClick={submitDelete}>{deleting ? 'Menghapus…' : 'Hapus'}</button>
+              <button className="px-4 py-2 rounded border" disabled={deleting} onClick={()=>{ setShowDelete(false); setDeletePassword('') }}>Batal</button>
             </div>
           </div>
         )}

@@ -28,7 +28,7 @@ export default function Institutions() {
           const baru = await getJson('/api/calon/instansi/baru/get')
           const arrBaru = Array.isArray(baru?.data) ? baru.data : []
           list = list.concat(arrBaru.map(it => ({
-            id: it.idCalonInstansi || it.id || Math.random().toString(36).slice(2),
+            id: it.idCalonInstansi || it.id ,
             kind: 'baru',
             nama: it.nama ?? '-',
             alamat: it.alamat ?? '-',
@@ -41,7 +41,7 @@ export default function Institutions() {
           const edit = await getJson('/api/calon/instansi/edit/get')
           const arrEdit = Array.isArray(edit?.data) ? edit.data : []
           list = list.concat(arrEdit.map(it => ({
-            id: it.idCalonInstansi || it.id || Math.random().toString(36).slice(2),
+            id: it.idCalonInstansi || it.id ,
             kind: 'edit',
             nama: it.nama ?? '-',
             alamat: it.alamat ?? '-',

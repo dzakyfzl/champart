@@ -44,9 +44,11 @@ def get_all_kegiatan(
             "jenis": k.jenis,
             "nama_instansi": k.instansi.nama,
             "TAK_wajib": k.TAK_wajib,
+            "status_kegiatan": k.status_kegiatan,
             "waktu": k.waktu,
             "waktuDiupload": k.waktuDiupload,
             "views": k.views,
+            "pemohon": (k.admin_instansi.username if k.admin_instansi else None),
             "minat": [{"idMinat": m.idMinat, "nama_minat": m.nama} for m in k.minat_list],
             "bakat": [{"idBakat": b.idBakat, "nama_bakat": b.nama} for b in k.bakat_list]
         })
@@ -262,7 +264,7 @@ def filter_search_kegiatan(
     if not minat_ids and not bakat_ids:
         try:
             query = select(Kegiatan).where(
-                Kegiatan.status_kegiatan == "approved", 
+                Kegiatan.status_kegiatan == "Approved", 
                 Kegiatan.waktu > now
             )
             
@@ -291,7 +293,7 @@ def filter_search_kegiatan(
                     select(Kegiatan)
                     .join(minatKegiatan, Kegiatan.idKegiatan == minatKegiatan.c.idKegiatan)
                     .where(
-                        Kegiatan.status_kegiatan == "approved",
+                        Kegiatan.status_kegiatan == "Approved",
                         Kegiatan.waktu > now,
                         minatKegiatan.c.idMinat.in_(minat_ids)
                     )
@@ -311,7 +313,7 @@ def filter_search_kegiatan(
                     select(Kegiatan)
                     .join(bakatKegiatan, Kegiatan.idKegiatan == bakatKegiatan.c.idKegiatan)
                     .where(
-                        Kegiatan.status_kegiatan == "approved",
+                        Kegiatan.status_kegiatan == "Approved",
                         Kegiatan.waktu > now,
                         bakatKegiatan.c.idBakat.in_(bakat_ids)
                     )
@@ -348,6 +350,7 @@ def filter_search_kegiatan(
             "jenis": k.jenis,
             "nama_instansi": k.instansi.nama,
             "TAK_wajib": k.TAK_wajib,
+            "status_kegiatan": k.status_kegiatan,
             "waktu": k.waktu,
             "waktuDiupload": k.waktuDiupload,
             "views": k.views,
@@ -414,7 +417,7 @@ def get_fyp_kegiatan(
 
         semua_kegiatan = db.execute(
             select(Kegiatan).where(
-                Kegiatan.status_kegiatan == "approved",
+                Kegiatan.status_kegiatan == "Approved",
                 Kegiatan.waktu > now
             )
         ).scalars().all()
@@ -449,6 +452,7 @@ def get_fyp_kegiatan(
             "jenis": k.jenis,
             "nama_instansi": k.instansi.nama,
             "TAK_wajib": k.TAK_wajib,
+            "status_kegiatan": k.status_kegiatan,
             "waktu": k.waktu,
             "waktuDiupload": k.waktuDiupload,
             "views": k.views,
@@ -491,6 +495,7 @@ def get_pending_kegiatan(
             "jenis": k.jenis,
             "nama_instansi": k.instansi.nama,
             "TAK_wajib": k.TAK_wajib,
+            "status_kegiatan": k.status_kegiatan,
             "waktu": k.waktu,
             "waktuDiupload": k.waktuDiupload,
             "views": k.views,
@@ -506,6 +511,7 @@ def get_detail_kegiatan(
     idKegiatan: int,
     response: Response,
     user: Annotated[dict, Depends(validate_token)],
+    skip_views: bool = Query(default=False, description="Jangan tambah jumlah views"),
     db: Session = Depends(get_db)
 ):
     
@@ -518,9 +524,10 @@ def get_detail_kegiatan(
             response.status_code = status.HTTP_404_NOT_FOUND
             return {"message": "Kegiatan tidak ditemukan"}
         
-        kegiatan.views += 1
-        db.commit()
-        db.refresh(kegiatan)
+        if not skip_views:
+            kegiatan.views = (kegiatan.views or 0) + 1
+            db.commit()
+            db.refresh(kegiatan)
         
         return {
             "idKegiatan": kegiatan.idKegiatan,
@@ -534,6 +541,7 @@ def get_detail_kegiatan(
             "waktuDiupload": kegiatan.waktuDiupload,
             "views": kegiatan.views,
             "nama_instansi": kegiatan.instansi.nama,
+            "idAdminInstansi": kegiatan.idAdminInstansi,
             "lampiran": {
                 "idLampiran": kegiatan.lampiran.idLampiran,
                 "nama": kegiatan.lampiran.nama,

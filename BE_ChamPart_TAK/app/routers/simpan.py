@@ -151,7 +151,7 @@ def get_semua_simpan(
                 waktu_disimpan=s.waktu,
             )
             for s in simpan_list
-            if s.kegiatan.status_kegiatan == "approved" and s.kegiatan.waktu > now
+            if s.kegiatan.status_kegiatan == "Approved" and s.kegiatan.waktu > now
             
         ]
 

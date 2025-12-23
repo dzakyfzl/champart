@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Logo from '../../assets/svg/champart-logo.svg'
+import Profile from '../../assets/svg/profile.svg'
 import Toast from '../../component/AdminInstansi/Toast.jsx'
 import Modal from '../../component/AdminInstansi/Modal.jsx'
 import NavButton from '../../component/AdminInstansi/NavButton.jsx'
@@ -20,6 +21,8 @@ function AdminInstansi() {
   const [requests, setRequests] = useState(() => { try { const raw = localStorage.getItem('instansi_requests'); return raw ? JSON.parse(raw) : [] } catch { return [] } })
   const [account, setAccount] = useState(() => { try { const raw = localStorage.getItem('instansi_account'); return raw ? JSON.parse(raw) : { name: 'Admin Instansi', email: 'admin@instansi.id', phone: '', avatar: '' } } catch { return { name: 'Admin Instansi', email: 'admin@instansi.id', phone: '', avatar: '' } } })
   const [institution, setInstitution] = useState(() => { try { const raw = localStorage.getItem('instansi_profile'); return raw ? JSON.parse(raw) : { id: 'I-LOCAL', name: 'Instansi Anda', logo: '' } } catch { return { id: 'I-LOCAL', name: 'Instansi Anda', logo: '' } } })
+  const [avatarUrl, setAvatarUrl] = useState('')
+  const avatarObjRef = React.useRef(null)
 
   useEffect(() => { try { localStorage.setItem('instansi_activities', JSON.stringify(activities)) } catch {} }, [activities])
   useEffect(() => { try { localStorage.setItem('instansi_requests', JSON.stringify(requests)) } catch {} }, [requests])
@@ -27,6 +30,31 @@ function AdminInstansi() {
   useEffect(() => { try { localStorage.setItem('instansi_profile', JSON.stringify(institution)) } catch {} }, [institution])
 
   useEffect(() => { /* removed server polling */ }, [institution.id])
+  useEffect(() => {
+    const token = localStorage.getItem('access_token') || ''
+    if (!token) return
+    let canceled = false
+    ;(async () => {
+      try {
+        const r = await fetch('/api/account/get', { headers: { Authorization: `Bearer ${token}` } })
+        const j = await r.json()
+        if (!r.ok) return
+        const idLamp = Number(j?.idLampiran)
+        if (Number.isFinite(idLamp) && idLamp > 0) {
+          const rf = await fetch(`/api/file/get/${idLamp}`, { headers: { Authorization: `Bearer ${token}` } })
+          if (!rf.ok) return
+          const blob = await rf.blob()
+          const url = URL.createObjectURL(blob)
+          if (avatarObjRef.current) URL.revokeObjectURL(avatarObjRef.current)
+          avatarObjRef.current = url
+          if (!canceled) setAvatarUrl(url)
+        } else {
+          if (!canceled) setAvatarUrl('')
+        }
+      } catch {}
+    })()
+    return () => { canceled = true }
+  }, [institution.id])
 
   function pushToast(message, type = 'info') {
     const id = Math.random().toString(36).slice(2)
@@ -108,8 +136,14 @@ function AdminInstansi() {
             </div>
             <div className="hidden md:block text-sm text-gray-600">{institution.name} › {tab}</div>
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full bg-gray-800 text-white grid place-items-center text-sm overflow-hidden">
-                {account.avatar ? (<img src={account.avatar} alt="Avatar" className="w-full h-full object-cover" />) : 'AI'}
+              <div className="w-8 h-8 rounded-full text-white grid place-items-center text-sm overflow-hidden">
+                {avatarUrl ? (
+                  <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                ) : account.avatar ? (
+                  <img src={account.avatar} alt="Avatar" className="w-full h-full object-cover" />
+                ) : (
+                  <img src={Profile} alt="Avatar" className="w-5 h-5" />
+                )}
               </div>
             </div>
           </div>

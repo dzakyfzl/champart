@@ -52,7 +52,7 @@ export default function Requests({ requests, setRequests, pushToast, openModal, 
               {requests.map(item => (
                 <tr key={item.id} className="hover:bg-gray-50">
                   <td className="px-4 py-3">{item.email}</td>
-                  <td className="px-4 py-3"><Badge label={'Menunggu'} /></td>
+                  <td className="px-4 py-3"><Badge label={'Telah Diajukan'} /></td>
                 </tr>
               ))}
             </tbody>

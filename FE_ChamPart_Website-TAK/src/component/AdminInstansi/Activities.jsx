@@ -4,7 +4,6 @@ import Badge from './Badge.jsx'
 export default function Activities({ activities, setActivities, pushToast, openModal, closeModal }) {
   const [query, setQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('Semua')
-  const [submittingId, setSubmittingId] = useState(null)
   const [kegiatan, setKegiatan] = useState(['Seminar', 'Webinar', 'Bootcamp', 'Lomba'])
   let setAddSaving = null
   let setEditSaving = null
@@ -55,6 +54,41 @@ export default function Activities({ activities, setActivities, pushToast, openM
   async function getInstansiInfo() {
     const j = await apiFetch('/account/admin-instansi/get-instansi', { method: 'GET' })
     return j?.data || {}
+  }
+
+  async function syncFromServer() {
+    try {
+      const info = await getInstansiInfo()
+      const instansiNama = info?.nama || ''
+      const arr = await apiFetch('/kegiatan/all', { method: 'GET' })
+      const list = Array.isArray(arr) ? arr.filter(k => String(k.nama_instansi || '') === instansiNama) : []
+      function normalizeStatus(s) {
+        const t = String(s || '').toLowerCase()
+        if (t === 'pending') return 'Menunggu'
+        if (t === 'approved') return 'Disetujui'
+        if (t === 'denied') return 'Ditolak'
+      }
+      const mapped = list.map(k => ({
+        id: 'AK-' + Number(k.idKegiatan),
+        serverId: Number(k.idKegiatan),
+        name: String(k.nama || ''),
+        jenis: String(k.jenis || ''),
+        date: String(k.waktu || '').slice(0,10),
+        waktu: String(k.waktu || ''),
+        location: instansiNama,
+        description: '',
+        status: normalizeStatus(k.status_kegiatan),
+        nominal: Number(k.nominal_TAK || 0),
+        takWajib: !!k.TAK_wajib,
+        idLampiran: null,
+        minatIds: Array.isArray(k.minat) ? k.minat.map(m => Number(m.idMinat)).filter(n => Number.isFinite(n)) : [],
+        bakatIds: Array.isArray(k.bakat) ? k.bakat.map(b => Number(b.idBakat)).filter(n => Number.isFinite(n)) : [],
+      }))
+      setActivities(mapped)
+      pushToast('Data kegiatan disinkronkan dari server')
+    } catch (e) {
+      pushToast(typeof e?.message === 'string' ? e.message : 'Gagal sinkron dari server', 'error')
+    }
   }
 
   function addActivity() {
@@ -179,7 +213,7 @@ export default function Activities({ activities, setActivities, pushToast, openM
         const infoInstansi = await getInstansiInfo()
         await apiFetch('/kegiatan/upload', { method: 'POST', body: { nama, jenis, deskripsi, waktu: isoWaktu, nominal_TAK: Number(data.nominal) || 0, TAK_wajib: !!data.takWajib, idInstansi: Number(infoInstansi?.idInstansi)||0, idLampiran: idLampiranNum, minat_id: Array.isArray(data.minatIds)?data.minatIds:[], bakat_id: Array.isArray(data.bakatIds)?data.bakatIds:[] } })
         const id = 'AK-' + (Date.now())
-        setActivities(prev => [{ id, serverId: null, name: nama, jenis, date: isoWaktu.slice(0, 10), waktu: isoWaktu, location: data.location, description: deskripsi, status: 'Menunggu' }, ...prev])
+        setActivities(prev => [{ id, serverId: null, name: nama, jenis, date: isoWaktu.slice(0, 10), waktu: isoWaktu, location: data.location, description: deskripsi, status: 'Menunggu', nominal: Number(data.nominal)||0, takWajib: !!data.takWajib, idLampiran: idLampiranNum, minatIds: Array.isArray(data.minatIds)?data.minatIds:[], bakatIds: Array.isArray(data.bakatIds)?data.bakatIds:[] }, ...prev])
         try {
           const info = await getInstansiInfo()
           const instansiNama = info?.nama || ''
@@ -301,7 +335,7 @@ export default function Activities({ activities, setActivities, pushToast, openM
     }
     openModal('Edit Kegiatan', <Form />, async () => {
       setEditSaving?.(true)
-      setActivities(prev => prev.map(a => a.id === item.id ? { ...a, name: data.name, jenis: data.jenis || a.jenis, date: (data.waktu || '').slice(0,10), waktu: data.waktu || a.waktu, location: data.location, description: data.description } : a))
+      setActivities(prev => prev.map(a => a.id === item.id ? { ...a, name: data.name, jenis: (data.jenis || a.jenis), date: (data.waktu || '').slice(0,10), waktu: (data.waktu || a.waktu), location: data.location, description: data.description, nominal: Number(data.nominal)||0, takWajib: !!data.takWajib, minatIds: Array.isArray(data.minatIds)?data.minatIds:[], bakatIds: Array.isArray(data.bakatIds)?data.bakatIds:[] } : a))
       try {
         if (Number.isFinite(item.serverId)) {
           let idLampiranNum = null
@@ -313,7 +347,7 @@ export default function Activities({ activities, setActivities, pushToast, openM
           if (Array.isArray(data.minatIds)) body.minat_id = data.minatIds
           if (Array.isArray(data.bakatIds)) body.bakat_id = data.bakatIds
           await apiFetch(`/kegiatan/edit/${encodeURIComponent(item.serverId)}`, { method: 'POST', body })
-          setActivities(prev => prev.map(a => a.id === item.id ? { ...a, date: isoWaktu.slice(0,10), waktu: isoWaktu } : a))
+          setActivities(prev => prev.map(a => a.id === item.id ? { ...a, jenis: (data.jenis || a.jenis), date: isoWaktu.slice(0,10), waktu: isoWaktu, nominal: Number(data.nominal)||0, takWajib: !!data.takWajib, idLampiran: (idLampiranNum ?? item.idLampiran ?? a.idLampiran), minatIds: Array.isArray(data.minatIds)?data.minatIds:[], bakatIds: Array.isArray(data.bakatIds)?data.bakatIds:[] } : a))
         }
         pushToast('Kegiatan diperbarui')
         closeModal()
@@ -358,12 +392,6 @@ export default function Activities({ activities, setActivities, pushToast, openM
     }, 'Hapus', true)
   }
 
-  async function submitActivity(item) {
-    const prev = activities
-    setSubmittingId(item.id)
-    setActivities(p => p.map(a => a.id === item.id ? { ...a, status: 'Menunggu' } : a))
-    try { pushToast('Kegiatan diajukan') } catch (e) { setActivities(prev); pushToast('Gagal mengajukan kegiatan', 'error') } finally { setSubmittingId(null) }
-  }
 
   return (
     <div className="space-y-4">
@@ -381,7 +409,7 @@ export default function Activities({ activities, setActivities, pushToast, openM
               <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.3-4.3"/></svg>
             </div>
             <div className="flex items-center gap-1">
-              {['Semua','Draft','Menunggu','Disetujui','Ditolak'].map(s => (
+              {['Semua','Menunggu','Disetujui','Ditolak'].map(s => (
                 <button
                   key={s}
                   className={`px-3 py-1 rounded-full text-xs ${statusFilter===s?'bg-blue-600 text-white':'bg-gray-100 text-gray-700'}`}
@@ -389,7 +417,8 @@ export default function Activities({ activities, setActivities, pushToast, openM
                 >{s}</button>
               ))}
             </div>
-            <button className="ml-auto px-4 py-2 rounded bg-blue-600 text-white" onClick={addActivity}>Tambah Kegiatan</button>
+            <button className="ml-auto px-4 py-2 rounded border hover:bg-gray-50" onClick={syncFromServer}>Segarkan</button>
+            <button className="px-4 py-2 rounded bg-blue-600 text-white" onClick={addActivity}>Tambah Kegiatan</button>
           </div>
         </div>
       </div>
@@ -415,17 +444,11 @@ export default function Activities({ activities, setActivities, pushToast, openM
                   <td className="px-4 py-3"><Badge label={item.status} /></td>
                   <td className="px-4 py-3">
                     <div className="flex flex-wrap gap-2">
-                      <button className="px-3 py-1 rounded border hover:bg-gray-50" onClick={() => editActivity(item)}>Edit</button>
-                      <button className={`px-3 py-1 rounded text-white ${item.status==='Draft'?'bg-green-600 hover:bg-green-700':'bg-gray-300'} ${submittingId===item.id?'opacity-80 cursor-not-allowed':''}`} onClick={() => submitActivity(item)} disabled={item.status !== 'Draft' || submittingId===item.id}>
-                        {submittingId===item.id ? (
-                          <span className="flex items-center gap-1">
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="w-4 h-4 animate-spin"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none"/></svg>
-                            <span>Memproses</span>
-                          </span>
-                        ) : (
-                          'Ajukan'
-                        )}
-                      </button>
+                      <button
+                        className={`px-3 py-1 rounded border ${item.status==='Disetujui' ? 'hover:bg-gray-50' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}
+                        onClick={() => { if (item.status==='Disetujui') editActivity(item) }}
+                        disabled={item.status !== 'Disetujui'}
+                      >Edit</button>
                       <button className="px-3 py-1 rounded bg-red-600 text-white hover:bg-red-700" onClick={() => deleteActivity(item)}>Hapus</button>
                     </div>
                   </td>

@@ -59,6 +59,11 @@ function Login({ setToken }) {
         <div className="absolute bottom-20 left-1/3 w-72 h-72 bg-orange-400 rounded-full opacity-20 blur-3xl animate-pulse" style={{ animationDelay: '2s' }}></div>
         <div className="absolute -bottom-10 right-1/4 w-96 h-96 bg-blue-500 rounded-full opacity-20 blur-3xl animate-pulse" style={{ animationDelay: '0.5s' }}></div>
       </div>
+      <div className="absolute top-4 right-4 z-20">
+        <a href="/admin/register" className="px-4 py-2 bg-blue-900 text-white rounded-xl hover:bg-blue-800 transition-colors">
+          Register Admin
+        </a>
+      </div>
 
       <div className="relative z-10 w-full max-w-md mx-4">
         <div className="bg-white rounded-2xl shadow-2xl p-8">

@@ -10,7 +10,7 @@ import TampilanSearch from './page/user/tampilansearch.jsx'
 import TampilanKegiatan from './page/user/tampilankegiatan.jsx'
 import Profile from './page/user/editprofile.jsx'
 import EditPassword from './page/user/editpassword.jsx'
-import EditEmail from './page/user/editemail.jsx'
+import HapusAkun from './page/user/hapusakun.jsx'
 import Login from './page/user/login.jsx'
 import Registrasi from './page/user/registrasi.jsx'
 import RegisterAdmin from './page/admin/registerAdmin.jsx'
@@ -131,10 +131,10 @@ function App() {
   }
 
   const hideChrome = isPublic || isAdmin;
-  const isCentered = !["/editprofile", "/editpassword", "/editemail"].includes(location.pathname);
+  const isCentered = !["/editprofile", "/editpassword", "/hapusakun"].includes(location.pathname);
 
   const mainClass = hideChrome ? "" :
-    `${isCentered ? "max-w-7xl mx-auto pt-28 pb-14 px-14" : ""} pt-24 pb-5 px-14 flex-grow`;
+    `${isCentered ? "max-w-7xl mx-20 pt-28 pb-14 px-14" : ""} pt-24 pb-5 px-14 flex-grow`;
 
   return (
     <>
@@ -149,7 +149,7 @@ function App() {
             <Route path="/search" element={<Protected loading={loading} allowedRoles={["Pengguna"]} role={role}><TampilanSearch /></Protected>} />
             <Route path="/editprofile" element={<Protected loading={loading} allowedRoles={["Pengguna"]} role={role}><Profile /></Protected>} />
             <Route path="/editpassword" element={<Protected loading={loading} allowedRoles={["Pengguna"]} role={role}><EditPassword /></Protected>} />
-            <Route path="/editemail" element={<Protected loading={loading} allowedRoles={["Pengguna"]} role={role}><EditEmail /></Protected>} />
+            <Route path="/hapusakun" element={<Protected loading={loading} allowedRoles={["Pengguna"]} role={role}><HapusAkun /></Protected>} />
             <Route path="/admin/instansi" element={<Protected loading={loading} allowedRoles={["AdminInstansi"]} role={role}><AdminInstansi /></Protected>} />
             <Route path="/admin/pengawas" element={<Protected loading={loading} allowedRoles={["AdminPengawas"]} role={role}><AdminPengawas /></Protected>} />
             <Route path="/kegiatan/:id" element={<Protected loading={loading} allowedRoles={["Pengguna"]} role={role}><TampilanKegiatan /></Protected>} />

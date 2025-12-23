@@ -18,5 +18,5 @@ def verifikasi_access_token(user: Annotated[dict, Depends(validate_token)]):
 
 @router.get("/access/get", status_code=200)
 def verifikasi_refresh_token(user: Annotated[dict, Depends(validate_ref_token)]):
-    access_token = create_refresh_token(user["username"],user["role"])
+    access_token = create_token(user["username"],user["role"])
     return {"message": "Yahhoo~! token-mu valid", "user": user,"access_token":access_token}

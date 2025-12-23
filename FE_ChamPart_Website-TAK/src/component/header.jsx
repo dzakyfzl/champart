@@ -17,6 +17,8 @@ function Header(){
   const navigate = useNavigate();
   const token = localStorage.getItem("access_token")
   const [username, setUsername] = useState(null)
+  const [avatarUrl, setAvatarUrl] = useState('')
+  const lastAvatarRef = useRef(null)
 
   useEffect(() => {
     const getUser = async () => {
@@ -30,6 +32,21 @@ function Header(){
         const data = await res.json()
         console.log("User Data:", data)
         setUsername(data.username)
+        const idLamp = Number(data.idLampiran)
+        if (Number.isFinite(idLamp) && idLamp > 0) {
+          try {
+            const r = await fetch(`/api/file/get/${idLamp}`, { headers: { "Authorization": `Bearer ${token}` } })
+            if (r.ok) {
+              const b = await r.blob()
+              const url = URL.createObjectURL(b)
+              if (lastAvatarRef.current) URL.revokeObjectURL(lastAvatarRef.current)
+              lastAvatarRef.current = url
+              setAvatarUrl(url)
+            }
+          } catch {}
+        } else {
+          setAvatarUrl('')
+        }
       } catch (err) {
         console.error("Gagal ambil user:", err)
       }
@@ -165,14 +182,20 @@ function Header(){
             <span className="text-sm mt-1">History Kegiatan</span>
           </div>
           <div className="relative" ref={userRef}>
-            <button type="button" onClick={()=>setOpenUser(v=>!v)} className="flex items-center gap-2 text-gray-700">
-              <img src={Profile} alt="Profile" className="h-5 w-5" />
+            <button type="button" onClick={()=>setOpenUser(v=>!v)} className="flex items-center gap-3 text-gray-700">
+              <div className="w-10 h-10 rounded-full overflow-hidden bg-gray-200 border">
+                {avatarUrl ? (
+                  <img src={avatarUrl} alt="Profile" className="w-full h-full object-cover" />
+                ) : (
+                  <img src={Profile} alt="Profile" className="h-6 w-6 mx-auto my-[3px]" />
+                )}
+              </div>
               <span>{username}</span>
               <img src={Drop} alt="Dropdown" className="h-4 w-4 text-gray-700 fill-current" />
             </button>
             {openUser && (
               <div className="absolute right-0 mt-2 w-56 rounded-md border bg-white shadow-lg">
-                <ul className="py-1 text-sm text-gray-700" onClick={setOpenSuggest(false)}>
+                <ul className="py-1 text-sm text-gray-700" onClick={() => setOpenSuggest(false)}>
                   <li 
                   onClick={triggerSearch}
                   className="px-4 py-2 hover:bg-gray-50 cursor-pointer">Cari Kegiatan</li>

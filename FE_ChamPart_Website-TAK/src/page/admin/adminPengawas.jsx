@@ -1,10 +1,8 @@
 import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Logo from '../../assets/svg/champart-logo.svg'
+import Profile from '../../assets/svg/profile.svg'
 import Toast from '../../component/AdminPengawas/Toast.jsx'
-import Modal from '../../component/AdminPengawas/Modal.jsx'
-import Drawer from '../../component/AdminPengawas/Drawer.jsx'
-import Badge from '../../component/AdminPengawas/Badge.jsx'
 import NavButton from '../../component/AdminPengawas/NavButton.jsx'
 import { IconHome, IconUser, IconUserPlus, IconBuilding, IconKey, IconLogout, IconActivity } from '../../component/AdminPengawas/icons.jsx'
 import Dashboard from '../../component/AdminPengawas/Dashboard.jsx'
@@ -28,27 +26,49 @@ function AdminPengawas() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [toasts, setToasts] = useState([])
-  const [drawer, setDrawer] = useState({ open: false, title: '', content: null })
-  const [modal, setModal] = useState({ open: false, title: '', content: null, danger: false, confirmText: 'Konfirmasi', onConfirm: null })
   const [activities, setActivities] = useState([])
   const [institutions, setInstitutions] = useState([])
   const [secretCodes, setSecretCodes] = useState([])
   const [pendingCount, setPendingCount] = useState(0)
+  const [avatarUrl, setAvatarUrl] = useState('')
+  const avatarObjRef = React.useRef(null)
 
   const [adminCandidates, setAdminCandidates] = useState([])
   const [loadingAdmin, setLoadingAdmin] = useState(false)
 
-  useEffect(() => {
+  const fetchWithRefresh = async (url, options = {}) => {
+    let token = localStorage.getItem('access_token') || ''
+    let headers = { ...(options.headers || {}), ...(token ? { Authorization: `Bearer ${token}` } : {}) }
+    let res = await fetch(url, { ...options, headers })
+    let json = null
+    try { json = await res.json() } catch {}
+    if (res.status === 401 && (json?.detail === 'Could not validate credentials')) {
+      const refresh = localStorage.getItem('refresh_token') || ''
+      if (refresh) {
+        try {
+          const r2 = await fetch('/token/access/get', { headers: { Authorization: `Bearer ${refresh}` } })
+          let j2 = null
+          try { j2 = await r2.json() } catch {}
+          if (r2.ok && j2?.access_token) {
+            localStorage.setItem('access_token', j2.access_token)
+            token = j2.access_token
+            headers = { ...(options.headers || {}), Authorization: `Bearer ${token}` }
+            res = await fetch(url, { ...options, headers })
+            try { json = await res.json() } catch {}
+          }
+        } catch {}
+      }
+    }
+    return { res, json }
+  }
+
+useEffect(() => {
   const fetchAdminCandidates = async () => {
     try {
       setLoadingAdmin(true)
-      const token = localStorage.getItem('access_token')
-      const res = await fetch('/api/calon/admin-instansi/get', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      })
-      const result = await res.json()
-      if (res.ok && result.data) {
-        const mapped = result.data.map(item => ({
+      const { res, json } = await fetchWithRefresh('/api/calon/admin-instansi/get')
+      if (res.ok && json?.data) {
+        const mapped = json.data.map(item => ({
           id: item.idCalonAdminInstansi,
           email: item.email,
           instansiId: item.idInstansi,
@@ -58,7 +78,7 @@ function AdminPengawas() {
         }))
         setAdminCandidates(mapped)
       } else {
-        console.error(result.message || 'Gagal mengambil calon admin instansi')
+        console.error(json?.message || 'Gagal mengambil calon admin instansi')
       }
     } catch (err) {
       console.error('Error fetching calon admin instansi:', err)
@@ -69,23 +89,41 @@ function AdminPengawas() {
   fetchAdminCandidates()
 }, [])
  
+ useEffect(() => {
+   const token = localStorage.getItem('access_token') || ''
+   if (!token) return
+   let canceled = false
+   ;(async () => {
+     try {
+       const r = await fetch('/api/account/get', { headers: { Authorization: `Bearer ${token}` } })
+       const j = await r.json()
+       if (!r.ok) return
+       const idLamp = Number(j?.idLampiran)
+       if (Number.isFinite(idLamp) && idLamp > 0) {
+         const rf = await fetch(`/api/file/get/${idLamp}`, { headers: { Authorization: `Bearer ${token}` } })
+         if (!rf.ok) return
+         const blob = await rf.blob()
+         const url = URL.createObjectURL(blob)
+         if (avatarObjRef.current) URL.revokeObjectURL(avatarObjRef.current)
+         avatarObjRef.current = url
+         if (!canceled) setAvatarUrl(url)
+       } else {
+         if (!canceled) setAvatarUrl('')
+       }
+     } catch {}
+   })()
+   return () => { canceled = true }
+ }, [])
+ 
   useEffect(() => { 
     const fetchPendingActivities = async () => {
       try {
         setLoading(true)
-        const token = localStorage.getItem('access_token')
-        
-        const res = await fetch('/api/kegiatan/pending', {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        })
-        
-        const data = await res.json()
-        console.log('Pending activities:', data)
+        const { res, json } = await fetchWithRefresh('/api/kegiatan/pending')
+        console.log('Pending activities:', json)
         
         if (res.ok) {
-          const mappedActivities = data.map(k => ({
+          const mappedActivities = (Array.isArray(json) ? json : []).map(k => ({
           id: k.idKegiatan,
           nama: k.nama,
           jenis: k.jenis,
@@ -100,7 +138,6 @@ function AdminPengawas() {
             minute: '2-digit' 
           }),
           lokasi: k.lokasi || '-',
-          pemohon: k.nama_instansi, // Atau ambil dari data admin instansi
           status: 'Pending',
           deskripsi: k.deskripsi || '-',
           TAK_wajib: k.TAK_wajib,
@@ -113,7 +150,7 @@ function AdminPengawas() {
         setActivities(mappedActivities)
         setPendingCount(mappedActivities.length)
         } else {
-          setError(data.message || 'Gagal mengambil data kegiatan pending')
+          setError(json?.message || 'Gagal mengambil data kegiatan pending')
         }
       } catch (err) {
         console.error('Error fetching pending activities:', err)
@@ -129,19 +166,11 @@ function AdminPengawas() {
 useEffect(() => {
   const fetchPendingInstitutions = async () => {
     try {
-      const token = localStorage.getItem('access_token')
+      const { res, json } = await fetchWithRefresh('/api/calon/instansi/get')
+      console.log('Calon Instansi:', json)
       
-      const res = await fetch('/api/calon/instansi/get', {  
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      })
-      
-      const result = await res.json()
-      console.log('Calon Instansi:', result)
-      
-      if (res.ok&& result.data) {
-        const mappedInstitutions = result.data.map(inst => ({
+      if (res.ok && json?.data) {
+        const mappedInstitutions = json.data.map(inst => ({
           id: inst.idCalonInstansi,
           nama: inst.nama,
           jenis: inst.jenis,
@@ -153,7 +182,7 @@ useEffect(() => {
         
         setInstitutions(mappedInstitutions)
       } else {
-        console.error('Error fetching institutions:', data.message)
+        console.error('Error fetching institutions:', json?.message)
       }
     } catch (err) {
       console.error('Error fetching institutions:', err)
@@ -169,186 +198,13 @@ useEffect(() => {
     setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 2500)
   }
 
-  function openDrawer(title, content) {
-    setDrawer({ open: true, title, content })
-  }
-  function closeDrawer() {
-    setDrawer({ open: false, title: '', content: null })
-  }
-
-  function openConfirm({ title, content, danger, confirmText, onConfirm }) {
-    setModal({ open: true, title, content, danger: !!danger, confirmText: confirmText || 'Konfirmasi', onConfirm })
-  }
-  function closeConfirm() {
-    setModal({ open: false, title: '', content: null, danger: false, confirmText: 'Konfirmasi', onConfirm: null })
-  }
+  useEffect(() => {
+    const count = activities.filter(a => a.status === 'Pending' || a.status === 'Menunggu').length
+    setPendingCount(count)
+  }, [activities])
 
 
-  async function approveActivity(item) {
-  if (settings.moderation.requireNoteOnApprove) {
-    let note = ''
-    const Content = () => (
-      <div className="space-y-3">
-        <div>Masukkan catatan persetujuan untuk <b>{item.nama}</b>.</div>
-        <input className="w-full border rounded px-3 py-2" placeholder="Catatan persetujuan" onChange={e => note = e.target.value} />
-      </div>
-    )
-    openConfirm({
-      title: 'Setujui Kegiatan',
-      content: <Content />,
-      onConfirm: async () => {
-        try {
-          const token = localStorage.getItem('access_token')
-          const res = await fetch(`/api/approve/kegiatan/${item.id}`, {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ status: 'approved' })
-          })
-          
-          if (res.ok) {
-            setActivities(p => p.filter(a => a.id !== item.id))
-            setPendingCount(prev => prev - 1)
-            pushToast('Kegiatan disetujui', 'success')
-          } else {
-            const data = await res.json()
-            pushToast(data.message || 'Gagal menyetujui kegiatan', 'error')
-          }
-        } catch (err) {
-          console.error('Error approving activity:', err)
-          pushToast('Terjadi kesalahan', 'error')
-        }
-        closeConfirm()
-      }
-    })
-  } else {
-    openConfirm({
-      title: 'Setujui Kegiatan',
-      content: <div>Anda akan menyetujui <b>{item.nama}</b> oleh <b>{item.instansi}</b>.</div>,
-      onConfirm: async () => {
-        try {
-          const token = localStorage.getItem('access_token')
-          const res = await fetch(`/api/approve/kegiatan/${item.id}`, {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ status: 'approved' })
-          })
-          
-          if (res.ok) {
-            setActivities(p => p.filter(a => a.id !== item.id))
-            setPendingCount(prev => prev - 1)
-            pushToast('Kegiatan disetujui', 'success')
-          } else {
-            const data = await res.json()
-            pushToast(data.message || 'Gagal menyetujui kegiatan', 'error')
-          }
-        } catch (err) {
-          console.error('Error approving activity:', err)
-          pushToast('Terjadi kesalahan', 'error')
-        }
-        closeConfirm()
-      }
-    })
-  }
-}
-
-function rejectActivity(item) {
-  let alasan = ''
-  const Content = () => (
-    <div className="space-y-3">
-      <div>Masukkan alasan penolakan untuk <b>{item.nama}</b>.</div>
-      <textarea 
-        className="w-full border rounded px-3 py-2" 
-        placeholder="Alasan penolakan" 
-        rows="3"
-        onChange={e => alasan = e.target.value} 
-      />
-    </div>
-  )
-  openConfirm({
-    title: 'Tolak Kegiatan',
-    content: <Content />,
-    danger: true,
-    confirmText: 'Tolak',
-    onConfirm: async () => {
-      if (settings.moderation.requireReasonOnReject && !alasan.trim()) { 
-        pushToast('Alasan penolakan wajib', 'error')
-        return 
-      }
-      
-      try {
-        const token = localStorage.getItem('access_token')
-        const res = await fetch(`/api/approve/kegiatan/${item.id}`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ 
-            status: 'rejected',
-            alasan: alasan 
-          })
-        })
-        
-        if (res.ok) {
-          setActivities(p => p.filter(a => a.id !== item.id))
-          setPendingCount(prev => prev - 1)
-          pushToast('Kegiatan ditolak', 'success')
-        } else {
-          const data = await res.json()
-          pushToast(data.message || 'Gagal menolak kegiatan', 'error')
-        }
-      } catch (err) {
-        console.error('Error rejecting activity:', err)
-        pushToast('Terjadi kesalahan', 'error')
-      }
-      closeConfirm()
-    }
-  })
-}
-
-
-  function openActivityDetail(item) {
-    openDrawer('Detail Kegiatan', (
-      <div className="space-y-3">
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <div className="text-gray-600">Nama</div>
-            <div className="font-medium">{item.nama}</div>
-          </div>
-          <div>
-            <div className="text-gray-600">Instansi</div>
-            <div className="font-medium">{item.instansi}</div>
-          </div>
-          <div>
-            <div className="text-gray-600">Tanggal</div>
-            <div className="font-medium">{item.tanggal}</div>
-          </div>
-          <div>
-            <div className="text-gray-600">Pemohon</div>
-            <div className="font-medium">{item.pemohon}</div>
-          </div>
-          <div>
-            <div className="text-gray-600">Lokasi</div>
-            <div className="font-medium">{item.lokasi}</div>
-          </div>
-          <div>
-            <div className="text-gray-600">Status</div>
-            <div className="font-medium"><Badge label={item.status} /></div>
-          </div>
-        </div>
-        <div>
-          <div className="text-gray-600">Deskripsi</div>
-          <div>{item.deskripsi}</div>
-        </div>
-      </div>
-    ))
-  }
+  
 
   function approveInstitution(item) {
     openConfirm({
@@ -413,8 +269,6 @@ function rejectActivity(item) {
   return (
     <div className="h-screen flex">
       <Toast toasts={toasts} remove={(id) => setToasts(prev => prev.filter(t => t.id !== id))} />
-      <Modal open={modal.open} title={modal.title} onClose={closeConfirm} onConfirm={modal.onConfirm || (() => {})} confirmText={modal.confirmText} danger={modal.danger}>{modal.content}</Modal>
-      <Drawer open={drawer.open} title={drawer.title} onClose={closeDrawer}>{drawer.content}</Drawer>
 
       <aside className="w-16 bg-white border-r hidden md:flex flex-col items-center py-3">
         <div className="w-14 h-14 grid place-items-center">
@@ -449,16 +303,22 @@ function rejectActivity(item) {
                 {tabs.map(t => (<option key={t}>{t}</option>))}
               </select>
             </div>
-            <div className="hidden md:block text-sm text-gray-600">Admin › {tab}</div>
+            <div className="hidden md:block text-sm text-gray-600">Admin{tab}</div>
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full bg-gray-800 text-white grid place-items-center text-sm">AP</div>
+              <div className="w-8 h-8 rounded-full text-white grid place-items-center text-sm overflow-hidden">
+                {avatarUrl ? (
+                  <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                ) : (
+                  <img src={Profile} alt="Avatar" className="w-5 h-5" />
+                )}
+              </div>
             </div>
           </div>
         </header>
         <section className="p-4 overflow-y-auto flex-1">
           {error && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-2 rounded mb-4">{error}</div>}
-          {tab===tabs[0] && <Dashboard activities={activities} institutions={institutions} secretCodes={secretCodes} pendingCount={pendingCount} />}
-          {tab===tabs[1] && <Activities loading={loading} activities={activities} onViewDetail={openActivityDetail} onApprove={approveActivity} onReject={rejectActivity} />}
+          {tab===tabs[0] && <Dashboard />}
+          {tab===tabs[1] && <Activities loading={loading} activities={activities} onActivitiesChange={setActivities} settings={settings} pushToast={pushToast} />}
           {tab===tabs[2] && <Institutions />}
           {tab===tabs[3] && (<Candidates loading={loadingAdmin} candidates={adminCandidates} />)}
           {tab===tabs[4] && <SecretCodes institutions={institutions} secretCodes={secretCodes} settings={settings} onGenerate={generateCode} onRevoke={revokeCode} />}

@@ -10,6 +10,7 @@ function TampilanKegiatan(){
 
   const [kegiatan, setKegiatan] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [imageUrl, setImageUrl] = useState("")
 
   const [bookmarkLoading, setBookmarkLoading] = useState(false)
   const [isBookmarked, setIsBookmarked] = useState(false)
@@ -19,15 +20,23 @@ function TampilanKegiatan(){
       try {
         setLoading(true)
         const token = localStorage.getItem('access_token')
-        const res = await fetch(`/api/kegiatan/${id}`, {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        })
+        const headers = { 'Authorization': `Bearer ${token}` }
+        const res = await fetch(`/api/kegiatan/${id}?skip_views=true`, { headers })
         const data = await res.json()
-        console.log('Response kegiatan:', data)
         if (res.ok) {
-          setKegiatan(data)  
+          setKegiatan(data)
+        }
+        const key = `viewed_kegiatan_${id}`
+        const last = Number(sessionStorage.getItem(key) || '0')
+        const now = Date.now()
+        if (now - last > 5000) {
+          sessionStorage.setItem(key, String(now))
+          try {
+            const inc = await fetch(`/api/kegiatan/${id}`, { headers })
+            if (inc.ok) {
+              setKegiatan(prev => prev ? { ...prev, views: (prev.views || 0) + 1 } : prev)
+            }
+          } catch {}
         }
       } catch (error) {
         console.error('Error fetching kegiatan:', error)
@@ -37,6 +46,25 @@ function TampilanKegiatan(){
     }
     fetchKegiatan()
   }, [id])
+
+  useEffect(() => {
+    const idLamp = Number(kegiatan?.lampiran?.idLampiran)
+    if (!Number.isFinite(idLamp) || idLamp <= 0) { setImageUrl(""); return }
+    const token = localStorage.getItem('access_token') || ''
+    const headers = token ? { Authorization: `Bearer ${token}` } : {}
+    let canceled = false
+    ;(async () => {
+      try {
+        const rFile = await fetch(`/api/file/get/${idLamp}`, { headers })
+        const blob = await rFile.blob()
+        const url = URL.createObjectURL(blob)
+        if (!canceled) setImageUrl(url)
+      } catch {
+        if (!canceled) setImageUrl("")
+      }
+    })()
+    return () => { canceled = true }
+  }, [kegiatan?.lampiran?.idLampiran])
 
    useEffect(() => {
     const checkBookmarkStatus = async () => {
@@ -113,9 +141,7 @@ function TampilanKegiatan(){
     })
   }
 
-  const gambarUrl = kegiatan.lampiran?.folder 
-    ? `/api${kegiatan.lampiran.folder}` 
-    : "https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=1200&auto=format&fit=crop"
+  const gambarUrl = imageUrl || "https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=1200&auto=format&fit=crop"
 
 
   return (
@@ -158,14 +184,21 @@ function TampilanKegiatan(){
         <div className="space-y-3">
           <div className="text-xl md:text-2xl font-semibold">{kegiatan.nama}</div>
           <div className="text-sm text-gray-500">{kegiatan.jenis}</div>
-          <div className="text-sm text-gray-700">
-            {formatTanggal(kegiatan.waktu)} · {kegiatan.nama_instansi}
+          <div className="flex gap-6">
+            <div className="text-sm text-gray-700">
+              {formatTanggal(kegiatan.waktu)}
+            </div>
+            <div className="text-sm text-gray-700">
+              {kegiatan.nama_instansi}
+            </div>
           </div>
-          <div className="font-semibold text-sm">
+          <div className="font-bold text-sm">
             {kegiatan.TAK_wajib ? "TAK WAJIB" : "NON TAK"} 
-            {kegiatan.nominal_TAK > 0 && ` · ${kegiatan.nominal_TAK} Poin`}
           </div>
-          <div className="text-sm">Status: {kegiatan.status_kegiatan}</div>
+           <div className="font-semibold text-sm">
+            Nominal: 
+            {kegiatan.nominal_TAK > 0 && ` ${kegiatan.nominal_TAK} Poin`}
+          </div>
           <div className="space-y-2 text-sm">
             <p>{kegiatan.deskripsi}</p>
           </div>
