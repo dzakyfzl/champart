@@ -17,7 +17,7 @@ function AdminInstansi() {
   const [tab, setTab] = useState(tabs[0])
   const [toasts, setToasts] = useState([])
   const [modal, setModal] = useState({ open: false, title: '', content: null, confirmText: 'Simpan', danger: false, onConfirm: null })
-  const [activities, setActivities] = useState(() => { try { const raw = localStorage.getItem('instansi_activities'); return raw ? JSON.parse(raw) : [] } catch { return [] } })
+  const [activities, setActivities] = useState([])
   const [requests, setRequests] = useState(() => { try { const raw = localStorage.getItem('instansi_requests'); return raw ? JSON.parse(raw) : [] } catch { return [] } })
   const [account, setAccount] = useState(() => { try { const raw = localStorage.getItem('instansi_account'); return raw ? JSON.parse(raw) : { name: 'Admin Instansi', email: 'admin@instansi.id', phone: '', avatar: '' } } catch { return { name: 'Admin Instansi', email: 'admin@instansi.id', phone: '', avatar: '' } } })
   const [institution, setInstitution] = useState(() => { try { const raw = localStorage.getItem('instansi_profile'); return raw ? JSON.parse(raw) : { id: 'I-LOCAL', name: 'Instansi Anda', logo: '' } } catch { return { id: 'I-LOCAL', name: 'Instansi Anda', logo: '' } } })
@@ -28,6 +28,10 @@ function AdminInstansi() {
   useEffect(() => { try { localStorage.setItem('instansi_requests', JSON.stringify(requests)) } catch {} }, [requests])
   useEffect(() => { try { localStorage.setItem('instansi_account', JSON.stringify(account)) } catch {} }, [account])
   useEffect(() => { try { localStorage.setItem('instansi_profile', JSON.stringify(institution)) } catch {} }, [institution])
+
+  useEffect(() => {
+    fetchActivities();
+  }, []);
 
   useEffect(() => { /* removed server polling */ }, [institution.id])
   useEffect(() => {
@@ -101,7 +105,84 @@ function AdminInstansi() {
     })
   }
 
+  const fetchActivities = async () => {
+    try {
+    const token = localStorage.getItem('access_token');
+    const response = await fetch('/api/kegiatan/instansi', { 
+      headers: { Authorization: `Bearer ${token}` }
+    });
 
+    if (response.ok) {
+      const rawData = await response.json();
+      const mappedData = Array.isArray(rawData) ? rawData.map(item => ({
+        id: item.idKegiatan,              
+        serverId: item.idKegiatan,         
+        name: item.nama,                 
+        jenis: item.jenis,
+        location: item.nama_instansi,
+        date: item.waktu ? item.waktu.split('T')[0] : '', 
+        waktu: item.waktu,
+        status: normalizeStatusAPI(item.status_kegiatan), 
+        description: item.deskripsi || '', 
+        nominal: item.nominal_TAK,
+        takWajib: item.TAK_wajib,
+        idLampiran: item.idLampiran || 0,
+        minatIds: Array.isArray(item.minat) ? item.minat.map(m => m.idMinat) : [],
+        bakatIds: Array.isArray(item.bakat) ? item.bakat.map(b => b.idBakat) : []
+      })) : [];
+
+      setActivities(mappedData);
+    }
+  } catch (error) {
+    console.error("Gagal mengambil data kegiatan:", error);
+  }
+  }
+  function normalizeStatusAPI(statusRaw) {
+  const s = String(statusRaw || '').toLowerCase();
+  if (s.includes('approv') || s.includes('setuju') || s.includes('approved')) return 'Disetujui';
+  if (s.includes('reject') || s.includes('tolak') || s.includes('denied')) return 'Ditolak';
+  return 'Menunggu'; 
+}
+
+  const handleAddActivity = async (formData) => {
+    try {
+      const token = localStorage.getItem('access_token');
+      const payload = {
+        nama: formData.name,              
+        jenis: formData.jenis,
+        deskripsi: formData.description,  
+        waktu: new Date(formData.waktu).toISOString(),
+        nominal_TAK: parseInt(formData.nominal), 
+        TAK_wajib: formData.takWajib,            
+        idInstansi: parseInt(formData.idInstansi),
+        idLampiran: formData.idLampiran || 0,
+        minat_id: formData.minat_id || [],
+        bakat_id: formData.bakat_id || []
+      };
+      console.log(payload);
+
+      const response = await fetch('/api/kegiatan/upload', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(payload)
+      });
+      if (response.ok) {
+        pushToast('Kegiatan berhasil ditambahkan!', 'success');
+        fetchActivities();
+        return true;
+      } else {
+        const err = await response.json();
+        pushToast(`Gagal: ${err.message}`, 'error');
+        return false;
+      }
+    } catch (error) {
+      pushToast('Terjadi kesalahan koneksi', 'error');
+      return false;
+    }
+  }
   return (
     <div className="h-screen flex">
       <Toast toasts={toasts} remove={(id)=>setToasts(prev=>prev.filter(t=>t.id!==id))} />
@@ -153,7 +234,9 @@ function AdminInstansi() {
           {tab===tabs[1] && (
             <Activities
               activities={activities}
-              setActivities={setActivities}
+              setActivities={setActivities} 
+              onAddActivity={handleAddActivity} 
+              onRefresh={fetchActivities}
               pushToast={pushToast}
               openModal={openModal}
               closeModal={closeModal}

@@ -55,30 +55,26 @@ def get_all_kegiatan(
     
     return data
 
-# upload kegiatan
 @router.post('/upload',status_code=200)
 def upload_kegiatan(request: JSONKegiatanCreate, user: Annotated[dict, Depends(validate_token)], response: Response, db: Session = Depends(get_db)):
-    # hanya AdminInstansi yang dapat mengupload kegiatan
+
     if user["role"] != "AdminInstansi":
         response.status_code = status.HTTP_401_UNAUTHORIZED
-        return {"message":"anda tidak dapat mengunakan layanan ini"}
+        return {"message": "anda tidak dapat mengunakan layanan ini"}
 
-    # cari idAdminInstansi dan idInstansi berdasarkan username user
     try:
-        query = db.execute(select(AdminInstansi.idAdminInstansi, AdminInstansi.idInstansi).where(AdminInstansi.username==user['username'])).first()
+        query = db.execute(select(AdminInstansi.idAdminInstansi, AdminInstansi.idInstansi).where(AdminInstansi.username == user['username'])).first()
     except Exception as e:
         print(f"ERROR : {e}")
         response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
-        return {"message":"error pada sambungan database"}
+        return {"message": "error pada sambungan database"}
+    
     if not query:
         response.status_code = status.HTTP_404_NOT_FOUND
-        return {"message":"admin instansi tidak ditemukan"}
+        return {"message": "admin instansi tidak ditemukan"}
 
     idAdminInstansi = query[0]
     idInstansi = query[1]
-
-    # tentukan idAdminPengawas: gunakan dari request jika ada, atau pilih salah satu admin pengawas yang tersedia
-    # Admin pengawas hanya pada saat approval, tidak bisa pilih salah satu
 
     try:
         w = request.waktu
@@ -86,44 +82,61 @@ def upload_kegiatan(request: JSONKegiatanCreate, user: Annotated[dict, Depends(v
             waktu_dt = w
         else:
             s = str(w).strip()
-            if not s:
-                raise ValueError("empty waktu")
-            if s.endswith("Z"):
-                s = s[:-1] + "+00:00"
-            if len(s) == 10 and s[4] == '-' and s[7] == '-':
-                s = f"{s}T00:00:00"
+            if not s: raise ValueError("empty waktu")
+            if s.endswith("Z"): s = s[:-1] + "+00:00"
+            if len(s) == 10 and s[4] == '-' and s[7] == '-': s = f"{s}T00:00:00"
             if 'T' in s:
                 parts = s.split('T')
                 time = parts[1]
-                if time and len(time) == 5 and time[2] == ':':
-                    s = f"{parts[0]}T{time}:00"
+                if time and len(time) == 5 and time[2] == ':': s = f"{parts[0]}T{time}:00"
             waktu_dt = datetime.fromisoformat(s)
     except Exception:
         response.status_code = status.HTTP_400_BAD_REQUEST
-        return {"message":"format waktu salah, gunakan ISO datetime"}
+        return {"message": "format waktu salah, gunakan ISO datetime"}
+    
 
-    # insert kegiatan dengan status default Pending
+    final_id_lampiran = request.idLampiran
+    if final_id_lampiran == 0:
+        final_id_lampiran = None
+
     try:
-        db.execute(insert(Kegiatan).values(
+
+        new_kegiatan = Kegiatan(
             nama=request.nama,
             jenis=request.jenis,
             deskripsi=request.deskripsi,
             waktu=waktu_dt,
             nominal_TAK=request.nominal_TAK,
             TAK_wajib=request.TAK_wajib,
-            status_kegiatan='Pending',
-            waktuDiupload=func.now(),
+            status_kegiatan='Pending', 
+            waktuDiupload=datetime.now(), 
             idAdminInstansi=idAdminInstansi,
             idInstansi=idInstansi,
-            idLampiran=request.idLampiran
-        ))
-        db.commit()
-    except Exception as e:
-        print(f"ERROR : {e}")
-        response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
-        return {"message":"error pada sambungan database"}
+            idLampiran=final_id_lampiran 
+        )
+        
+        db.add(new_kegiatan)
+        db.flush()
+        db.refresh(new_kegiatan) 
 
-    return {"message":"kegiatan berhasil diupload, status: Pending"}
+        if request.minat_id:
+            for m_id in request.minat_id:
+                stmt = text("INSERT INTO minatKegiatan (idKegiatan, idMinat) VALUES (:k, :m)")
+                db.execute(stmt, {"k": new_kegiatan.idKegiatan, "m": m_id})
+        if request.bakat_id:
+            for b_id in request.bakat_id:
+                stmt = text("INSERT INTO bakatKegiatan (idKegiatan, idBakat) VALUES (:k, :b)")
+                db.execute(stmt, {"k": new_kegiatan.idKegiatan, "b": b_id})
+
+        db.commit() 
+
+    except Exception as e:
+        db.rollback() 
+        print(f"ERROR DATABASE DETAIL: {e}") 
+        response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
+        return {"message": f"Gagal menyimpan data: {str(e)}"}
+
+    return {"message": "kegiatan berhasil diupload, status: Pending"}
 
 
 def serialize_kegiatan(obj: Kegiatan) -> dict:
@@ -143,41 +156,49 @@ def serialize_kegiatan(obj: Kegiatan) -> dict:
         "idLampiran": obj.idLampiran
     }
 
-@router.post('/edit/{id}',status_code=200)
+@router.post('/edit/{id}', status_code=200)
 def edit_kegiatan(id: int, request: JSONKegiatanUpdate, user: Annotated[dict, Depends(validate_token)], response: Response, db: Session = Depends(get_db)):
     if user["role"] != "AdminInstansi":
         response.status_code = status.HTTP_401_UNAUTHORIZED
-        return {"message":"anda tidak dapat mengunakan layanan ini"}
+        return {"message": "anda tidak dapat mengunakan layanan ini"}
     
     try:
-        query = db.execute(select(AdminInstansi.idAdminInstansi).where(AdminInstansi.username==user['username'])).first()
+        query = db.execute(select(AdminInstansi.idInstansi).where(AdminInstansi.username == user['username'])).first()
     except Exception as e:
         print(f"ERROR : {e}")
         response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
-        return {"message":"error pada sambungan database"}
+        return {"message": "error pada sambungan database"}
+    
     if not query:
         response.status_code = status.HTTP_404_NOT_FOUND
-        return {"message":"admin instansi tidak ditemukan"}
-    idAdminInstansi = query[0]
+        return {"message": "admin instansi tidak ditemukan"}
+    
+    idInstansiUser = query[0]
 
     try:
         exists = db.execute(select(Kegiatan.idKegiatan).where(
-            Kegiatan.idKegiatan==id,
-            Kegiatan.idAdminInstansi==idAdminInstansi
+            Kegiatan.idKegiatan == id,
+            Kegiatan.idInstansi == idInstansiUser 
         )).first()
     except Exception as e:
         print(f"ERROR : {e}")
         response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
-        return {"message":"error pada sambungan database"}
+        return {"message": "error pada sambungan database"}
+        
     if not exists:
         response.status_code = status.HTTP_404_NOT_FOUND
-        return {"message":"kegiatan tidak ditemukan atau bukan milik anda"}
+        return {"message": "kegiatan tidak ditemukan atau bukan milik instansi anda"}
 
     try:
-        waktu_dt = None if request.waktu is None else (request.waktu if isinstance(request.waktu, datetime) else datetime.fromisoformat(str(request.waktu)))
+        waktu_dt = None
+        if request.waktu is not None:
+            if isinstance(request.waktu, datetime):
+                waktu_dt = request.waktu
+            else:
+                waktu_dt = datetime.fromisoformat(str(request.waktu))
     except Exception:
         response.status_code = status.HTTP_400_BAD_REQUEST
-        return {"message":"format waktu salah, gunakan ISO datetime"}
+        return {"message": "format waktu salah, gunakan ISO datetime"}
 
     try:
         db.execute(text("""
@@ -200,53 +221,77 @@ def edit_kegiatan(id: int, request: JSONKegiatanUpdate, user: Annotated[dict, De
             "idLampiran": request.idLampiran,
             "id": id
         })
+
+
+        if request.minat_id is not None:
+            db.execute(text("DELETE FROM minatKegiatan WHERE idKegiatan = :id"), {"id": id})
+            for m_id in request.minat_id:
+                db.execute(text("INSERT INTO minatKegiatan (idKegiatan, idMinat) VALUES (:k, :m)"), {"k": id, "m": m_id})
+
+        if request.bakat_id is not None:
+            db.execute(text("DELETE FROM bakatKegiatan WHERE idKegiatan = :id"), {"id": id})
+            for b_id in request.bakat_id:
+                db.execute(text("INSERT INTO bakatKegiatan (idKegiatan, idBakat) VALUES (:k, :b)"), {"k": id, "b": b_id})
+
         db.commit()
+
     except Exception as e:
+        db.rollback()
         print(f"ERROR : {e}")
         response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
-        return {"message":"error pada sambungan database"}
-    return {"message":"kegiatan berhasil diupdate"}
+        return {"message": "error pada sambungan database"}
+    
+    return {"message": "kegiatan berhasil diupdate"}
 
 
-@router.post('/{id}/delete',status_code=200)
+@router.delete('/{id}', status_code=200) 
 def delete_kegiatan(id: int, user: Annotated[dict, Depends(validate_token)], response: Response, db: Session = Depends(get_db)):
 
     if user["role"] != "AdminInstansi":
         response.status_code = status.HTTP_401_UNAUTHORIZED
-        return {"message":"anda tidak dapat mengunakan layanan ini"}
+        return {"message": "anda tidak dapat mengunakan layanan ini"}
 
     try:
-        query = db.execute(select(AdminInstansi.idAdminInstansi).where(AdminInstansi.username==user['username'])).first()
+        query = db.execute(select(AdminInstansi.idInstansi).where(AdminInstansi.username == user['username'])).first()
     except Exception as e:
         print(f"ERROR : {e}")
         response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
-        return {"message":"error pada sambungan database"}
+        return {"message": "error pada sambungan database"}
+    
     if not query:
         response.status_code = status.HTTP_404_NOT_FOUND
-        return {"message":"admin instansi tidak ditemukan"}
-    idAdminInstansi = query[0]
-
+        return {"message": "admin instansi tidak ditemukan"}
+    
+    idInstansiUser = query[0]
     try:
         exists = db.execute(select(Kegiatan.idKegiatan).where(
-            Kegiatan.idKegiatan==id,
-            Kegiatan.idAdminInstansi==idAdminInstansi
+            Kegiatan.idKegiatan == id,
+            Kegiatan.idInstansi == idInstansiUser 
         )).first()
     except Exception as e:
         print(f"ERROR : {e}")
         response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
-        return {"message":"error pada sambungan database"}
+        return {"message": "error pada sambungan database"}
+        
     if not exists:
         response.status_code = status.HTTP_404_NOT_FOUND
-        return {"message":"kegiatan tidak ditemukan atau bukan milik anda"}
+        return {"message": "kegiatan tidak ditemukan atau bukan milik instansi anda"}
 
     try:
+        db.execute(text("DELETE FROM minatKegiatan WHERE idKegiatan = :id"), {"id": id})
+        db.execute(text("DELETE FROM bakatKegiatan WHERE idKegiatan = :id"), {"id": id})
+        db.execute(text("DELETE FROM Simpan WHERE idKegiatan = :id"), {"id": id})
         db.execute(text("DELETE FROM Kegiatan WHERE idKegiatan = :id"), {"id": id})
+        
         db.commit()
     except Exception as e:
-        print(f"ERROR : {e}")
+        db.rollback() 
+        print(f"ERROR DELETE: {e}")
         response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
-        return {"message":"error pada sambungan database"}
-    return {"message":"kegiatan berhasil dihapus"}
+        return {"message": f"Gagal menghapus data: {str(e)}"}
+    
+    return {"message": "kegiatan berhasil dihapus"}
+
 
 @router.get("/filter", response_model=List[JSONKegiatanCard], summary="Filter & Search Kegiatan")
 def filter_search_kegiatan(
@@ -503,6 +548,60 @@ def get_pending_kegiatan(
             "bakat": [{"idBakat": b.idBakat, "nama_bakat": b.nama} for b in k.bakat_list]
         })
     
+    return data
+
+@router.get("/instansi", response_model=List[JSONKegiatanCard])
+def get_kegiatan_by_instansi(
+    response: Response,
+    user: Annotated[dict, Depends(validate_token)],
+    db: Session = Depends(get_db)
+):
+    if user["role"] != "AdminInstansi":
+        response.status_code = status.HTTP_401_UNAUTHORIZED
+        return {"message": "anda tidak dapat mengunakan layanan ini"}
+    try: 
+        query = db.execute(
+            select(AdminInstansi.idInstansi).where(AdminInstansi.username == user['username'])
+        ).first()
+    except Exception as e:
+        print(f"ERROR : {e}")
+        response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
+        return {"message": "error pada sambungan database"}
+    if not query:
+        response.status_code = status.HTTP_404_NOT_FOUND
+        return {"message": "admin instansi tidak ditemukan"}
+    
+    idInstansi = query[0]
+
+    try:
+        kegiatan_list = db.execute(
+            select(Kegiatan)
+            .where(Kegiatan.idInstansi == idInstansi)
+            .order_by(Kegiatan.waktuDiupload.desc())
+        ).scalars().all()
+    except Exception as e:
+        print(f"ERROR : {e}")
+        response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
+        return {"message": "error pada sambungan database"}
+
+    if not kegiatan_list:
+        return []
+
+    data = []
+    for k in kegiatan_list:
+        data.append({
+            "idKegiatan": k.idKegiatan,
+            "nama": k.nama,
+            "jenis": k.jenis,
+            "nama_instansi": k.instansi.nama,
+            "TAK_wajib": k.TAK_wajib,
+            "status_kegiatan": k.status_kegiatan,
+            "waktu": k.waktu,
+            "waktuDiupload": k.waktuDiupload,
+            "views": k.views if k.views is not None else 0, 
+            "minat": [{"idMinat": m.idMinat, "nama_minat": m.nama} for m in k.minat_list],
+            "bakat": [{"idBakat": b.idBakat, "nama_bakat": b.nama} for b in k.bakat_list]})
+
     return data
 
 
