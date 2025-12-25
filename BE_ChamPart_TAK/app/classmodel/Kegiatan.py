@@ -13,7 +13,7 @@ class KegiatanBase(BaseModel):
     nominal_TAK: int
     TAK_wajib: bool
     idInstansi: int
-    idLampiran: int
+    idLampiran: Optional[int] = None 
 
 class JSONKegiatanCard(BaseModel):
     idKegiatan: int
@@ -25,13 +25,11 @@ class JSONKegiatanCard(BaseModel):
     waktu: datetime
     waktuDiupload: datetime
     views: int
-    minat: List[JSONMinat] = []
-    bakat: List[JSONBakat] = []
-
+    minat: List[dict] = []
+    bakat: List[dict] = []
 
     class Config:
         orm_mode = True
-
 
 class JSONKegiatanCreate(KegiatanBase):
     minat_id: List[int] = []
@@ -59,13 +57,6 @@ class JSONKegiatanResponse(KegiatanBase):
     class Config:
         orm_mode = True
 
-class JSONKegiatanDetail(JSONKegiatanResponse):
-    minat_list: List[dict] = []  
-    bakat_list: List[dict] = []  
-    
-    class Config:
-        orm_mode = True
-
 class JSONChangeStatus(BaseModel):
     status: str
 
@@ -82,9 +73,13 @@ class JSONKegiatanDetail(BaseModel):
     waktuDiupload: datetime
     views: int
     nama_instansi: str
-    lampiran: Optional[JSONLampiran] = None
-    minat: List[JSONMinat] = []
-    bakat: List[JSONBakat] = []
+    idAdminInstansi: int
+    
+    minat: List[dict] = []
+    bakat: List[dict] = []
+    
+
+    lampiran: Optional[dict] = None 
 
     class Config:
-        from_attributes = True
+        orm_mode = True
