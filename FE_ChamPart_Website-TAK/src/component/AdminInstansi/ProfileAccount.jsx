@@ -163,7 +163,7 @@ export default function ProfileAccount({ fileToDataUrl }) {
             <div className="text-sm font-medium mb-1">Foto Profil</div>
             <div className="flex items-center gap-4">
               <div className="w-16 h-16 rounded-full bg-gray-200 overflow-hidden border">
-                {avatar ? (<img src={avatar} alt="Avatar" className="w-full h-full object-cover" />) : (<div className="w-full h-full grid place-items-center text-xs text-gray-500">PP</div>)}
+                {avatar ? (<img src={avatar} alt="Avatar" className="w-full h-full object-cover" onError={()=>setAvatar('')} />) : (<div className="w-full h-full grid place-items-center text-xs text-gray-500">PP</div>)}
               </div>
               <div>
                 <div className="text-sm text-gray-700 mb-1">Upload Foto Profil</div>
@@ -231,7 +231,7 @@ export default function ProfileAccount({ fileToDataUrl }) {
         <div className="font-semibold mb-4">Preview</div>
         <div className="flex items-center gap-4">
           <div className="w-16 h-16 rounded-full bg-gray-200 overflow-hidden border">
-            {avatar ? (<img src={avatar} alt="Avatar Preview" className="w-full h-full object-cover" />) : (<div className="w-full h-full grid place-items-center text-xs text-gray-500">PP</div>)}
+            {avatar ? (<img src={avatar} alt="Avatar Preview" className="w-full h-full object-cover" onError={()=>setAvatar('')} />) : (<div className="w-full h-full grid place-items-center text-xs text-gray-500">PP</div>)}
           </div>
           <div>
             <div className="font-medium text-lg">{username || 'Admin Instansi'}</div>

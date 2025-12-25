@@ -59,6 +59,28 @@ function Bookmark() {
     if (items.length > 0) loadImages()
   }, [items])
 
+  useEffect(() => {
+    const key = localStorage.getItem('cron_key')
+    if (!key) return
+    let aborted = false
+    const run = async () => {
+      try {
+        const res = await fetch('/api/notification/trigger', {
+          method: 'GET',
+          headers: { 'X-Cron-Key': key }
+        })
+        const data = await res.json().catch(() => null)
+        if (!aborted) {
+          console.log('Trigger notifikasi:', res.ok ? 'OK' : 'Gagal', data)
+        }
+      } catch (e) {
+        if (!aborted) console.error('Kesalahan memicu notifikasi:', e)
+      }
+    }
+    run()
+    return () => { aborted = true }
+  }, [])
+
   const formatTanggal = (dateString) => {
     return new Date(dateString).toLocaleDateString('id-ID', { 
       weekday: 'long', 

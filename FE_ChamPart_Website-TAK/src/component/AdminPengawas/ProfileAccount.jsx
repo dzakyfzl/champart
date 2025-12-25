@@ -173,7 +173,7 @@ export default function ProfileAccount() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
           <div className="flex items-center gap-4">
             <div className="w-16 h-16 rounded-full bg-gray-200 overflow-hidden border">
-              {avatar ? (<img src={avatar} alt="Avatar" className="w-full h-full object-cover" />) : (<div className="w-full h-full grid place-items-center text-xs text-gray-500">PP</div>)}
+              {avatar ? (<img src={avatar} alt="Avatar" className="w-full h-full object-cover" onError={()=>setAvatar('')} />) : (<div className="w-full h-full grid place-items-center text-xs text-gray-500">PP</div>)}
             </div>
             <div>
               <div className="text-sm text-gray-700 mb-1">Foto Profil</div>

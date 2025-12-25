@@ -104,7 +104,14 @@ def edit_akun_admin_pengawas(admin:JSONAdminPengawas, response:Response, user: A
         return {"message":"syntax email salah, harap masukkan yang benar"}
     
     try:
-        existing_account = db.execute(select(func.count('*')).select_from(AdminPengawas).where(AdminPengawas.username == admin.username)).first()
+        existing_account = db.execute(
+            select(func.count('*')).
+            select_from(AdminPengawas)
+            .where(
+                AdminPengawas.username == admin.username,
+                AdminPengawas.username != user["username"]
+                )
+            ).first()
     except Exception as e:
         print(f"ERROR : {e}")
         response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR

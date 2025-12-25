@@ -264,7 +264,7 @@ function Profile() {
             <div className="flex flex-col items-center">
               <div className="w-32 h-32 rounded-full bg-[#F2E9DB] overflow-hidden flex items-center justify-center">
                 {avatar ? (
-                  <img src={avatar} alt="Avatar" className="w-32 h-32 object-cover" />
+                  <img src={avatar} alt="Avatar" className="w-32 h-32 object-cover" onError={()=>setAvatar('')} />
                 ) : (
                   <svg viewBox="0 0 24 24" className="w-10 h-10 text-gray-700 fill-current"><path d="M12 12a5 5 0 100-10 5 5 0 000 10zm0 2c-4.418 0-8 2.239-8 5v3h16v-3c0-2.761-3.582-5-8-5z"/></svg>
                 )}

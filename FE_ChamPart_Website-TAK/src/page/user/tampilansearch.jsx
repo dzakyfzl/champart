@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useNavigate, useSearchParams } from "react-router-dom"
 import Card from "../../component/card.jsx" 
 import Seminar from '../../assets/svg/seminar.svg'
@@ -67,6 +67,9 @@ function TampilanSearch(){
   const [selectedBakat, setSelectedBakat] = useState(new Set())
   const [selectedMinat, setSelectedMinat] = useState(new Set())
   const [filterActive, setFilterActive] = useState('All')
+  const [imageMap, setImageMap] = useState({})
+  const imageObjUrlsRef = useRef({})
+  const jenisIcons = { Seminar, Webinar, Bootcamp, Lomba }
 
   const toggleSelect = (setObj, value) => {
     const next = new Set(setObj)
@@ -134,6 +137,40 @@ function TampilanSearch(){
       year: 'numeric' 
     })
   }
+
+  useEffect(() => {
+    let canceled = false
+    const token = localStorage.getItem('access_token') || ''
+    const headers = token ? { Authorization: `Bearer ${token}` } : {}
+    ;(async () => {
+      const next = {}
+      for (const it of items) {
+        try {
+          const r = await fetch(`/api/kegiatan/${it.idKegiatan}?skip_views=true`, { headers })
+          const d = await r.json()
+          if (!r.ok) continue
+          const idLamp = Number(d?.lampiran?.idLampiran)
+          if (Number.isFinite(idLamp) && idLamp > 0) {
+            const rf = await fetch(`/api/file/get/${idLamp}`, { headers })
+            if (!rf.ok) continue
+            const blob = await rf.blob()
+            const url = URL.createObjectURL(blob)
+            next[it.idKegiatan] = url
+          }
+        } catch {}
+      }
+      if (!canceled) {
+        Object.values(imageObjUrlsRef.current || {}).forEach(u => { try { URL.revokeObjectURL(u) } catch {} })
+        imageObjUrlsRef.current = next
+        setImageMap(next)
+      }
+    })()
+    return () => {
+      canceled = true
+      Object.values(imageObjUrlsRef.current || {}).forEach(u => { try { URL.revokeObjectURL(u) } catch {} })
+      imageObjUrlsRef.current = {}
+    }
+  }, [items])
 
 
 
@@ -220,7 +257,7 @@ function TampilanSearch(){
           items.map((kegiatan) => (
             <Card
               key={kegiatan.idKegiatan}
-              gambar="https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=1200&auto=format&fit=crop"
+              gambar={imageMap[kegiatan.idKegiatan] || jenisIcons[kegiatan.jenis] || "https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=1200&auto=format&fit=crop"}
               judul={kegiatan.nama}
               instansi={kegiatan.nama_instansi}
               tanggal={formatTanggal(kegiatan.waktu)}

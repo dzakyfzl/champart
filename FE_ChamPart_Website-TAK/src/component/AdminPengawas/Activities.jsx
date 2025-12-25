@@ -185,8 +185,10 @@ export default function Activities({ loading, activities, onActivitiesChange, se
             const token = localStorage.getItem('access_token') || ''
             const headers = token ? { Authorization: `Bearer ${token}` } : {}
             const rFile = await fetch(`/api/file/get/${idLamp}`, { headers })
-            const blob = await rFile.blob()
-            imageUrl = URL.createObjectURL(blob)
+            if (rFile.ok) {
+              const blob = await rFile.blob()
+              imageUrl = URL.createObjectURL(blob)
+            }
           }
         } catch {}
         setDrawer(drw => ({

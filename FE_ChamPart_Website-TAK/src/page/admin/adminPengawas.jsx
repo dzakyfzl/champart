@@ -307,7 +307,7 @@ useEffect(() => {
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 rounded-full text-white grid place-items-center text-sm overflow-hidden">
                 {avatarUrl ? (
-                  <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                  <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" onError={()=>setAvatarUrl('')} />
                 ) : (
                   <img src={Profile} alt="Avatar" className="w-5 h-5" />
                 )}

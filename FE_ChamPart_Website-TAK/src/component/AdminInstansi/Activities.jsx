@@ -604,6 +604,11 @@ export default function Activities({
       const [instansi, setInstansi] = useState("");
       const [minatOptions, setMinatOptions] = useState([]);
       const [bakatOptions, setBakatOptions] = useState([]);
+      const [descVal, setDescVal] = useState(String(item.description || ""));
+      const [nominalVal, setNominalVal] = useState(Number(item.nominal || 0));
+      const [takWajibVal, setTakWajibVal] = useState(!!item.takWajib);
+      const [jenisVal, setJenisVal] = useState(String(item.jenis || ""));
+      const [waktuVal, setWaktuVal] = useState(String(data.waktu || ""));
 
       const [selectedMinat, setSelectedMinat] = useState(() => {
         const arr = Array.isArray(data.minatIds)
@@ -635,6 +640,61 @@ export default function Activities({
             const nama = info?.nama || "";
             setInstansi(nama);
             data.location = nama;
+          } catch {}
+        })();
+      }, []);
+      useEffect(() => {
+        (async () => {
+          try {
+            if (!Number.isFinite(item.serverId)) return;
+            const d = await apiFetch(`/kegiatan/${item.serverId}?skip_views=true`, { method: "GET" });
+            const des = String(d?.deskripsi || item.description || "");
+            const nom = Number(d?.nominal_TAK ?? item.nominal ?? 0);
+            const tak = !!(d?.TAK_wajib ?? item.takWajib);
+            const jen = String(d?.jenis || item.jenis || "");
+            const w = String(d?.waktu || data.waktu || "").slice(0, 16);
+            setDescVal(des);
+            setNominalVal(nom);
+            setTakWajibVal(tak);
+            setJenisVal(jen);
+            setWaktuVal(w);
+            data.description = des;
+            data.nominal = nom;
+            data.takWajib = tak;
+            data.jenis = jen;
+            data.waktu = w;
+            const id = Number(d?.lampiran?.idLampiran);
+            if (Number.isFinite(id) && id > 0) {
+              const token = localStorage.getItem("access_token") || "";
+              const headers = token ? { Authorization: `Bearer ${token}` } : {};
+              try {
+                const r = await fetch(`/api/file/get/${id}`, { headers });
+                if (r.ok) {
+                  const b = await r.blob();
+                  const url = URL.createObjectURL(b);
+                  setPreview(url);
+                }
+              } catch {}
+              data.idLampiran = id;
+            }
+            if (Array.isArray(d?.minat)) {
+              const mids = d.minat.map((m) => Number(m.idMinat)).filter((n) => Number.isFinite(n));
+              setSelectedMinat([
+                String(mids[0] || ""),
+                String(mids[1] || ""),
+                String(mids[2] || ""),
+              ]);
+              data.minatIds = Array.from(new Set(mids));
+            }
+            if (Array.isArray(d?.bakat)) {
+              const bids = d.bakat.map((b) => Number(b.idBakat)).filter((n) => Number.isFinite(n));
+              setSelectedBakat([
+                String(bids[0] || ""),
+                String(bids[1] || ""),
+                String(bids[2] || ""),
+              ]);
+              data.bakatIds = Array.from(new Set(bids));
+            }
           } catch {}
         })();
       }, []);
@@ -686,8 +746,11 @@ export default function Activities({
               <input
                 type="datetime-local"
                 className="w-full border rounded px-3 py-2"
-                defaultValue={data.waktu}
-                onChange={(e) => (data.waktu = e.target.value)}
+                value={waktuVal}
+                onChange={(e) => {
+                  setWaktuVal(e.target.value);
+                  data.waktu = e.target.value;
+                }}
               />
             </label>
           </div>
@@ -695,8 +758,11 @@ export default function Activities({
             <div className="text-sm font-medium mb-1">Jenis kegiatan</div>
             <input
               className="w-full border rounded px-3 py-2"
-              defaultValue={item.jenis || ""}
-              onChange={(e) => (data.jenis = e.target.value)}
+              value={jenisVal}
+              onChange={(e) => {
+                setJenisVal(e.target.value);
+                data.jenis = e.target.value;
+              }}
             />
           </label>
           <label className="block">
@@ -712,8 +778,11 @@ export default function Activities({
             <textarea
               className="w-full border rounded px-3 py-2"
               rows="4"
-              defaultValue={item.description}
-              onChange={(e) => (data.description = e.target.value)}
+              value={descVal}
+              onChange={(e) => {
+                setDescVal(e.target.value);
+                data.description = e.target.value;
+              }}
             ></textarea>
           </label>
           <div className="grid md:grid-cols-2 gap-4">
@@ -763,16 +832,23 @@ export default function Activities({
                 className="w-full border rounded px-3 py-2"
                 type="number"
                 min="0"
-                defaultValue={item.nominal || 0}
-                onChange={(e) => (data.nominal = Number(e.target.value) || 0)}
+                value={nominalVal}
+                onChange={(e) => {
+                  const n = Number(e.target.value) || 0;
+                  setNominalVal(n);
+                  data.nominal = n;
+                }}
               />
             </label>
             <label className="flex items-center gap-2 text-sm mt-7">
               <input
                 type="checkbox"
                 className="rounded"
-                defaultChecked={!!item.takWajib}
-                onChange={(e) => (data.takWajib = e.target.checked)}
+                checked={takWajibVal}
+                onChange={(e) => {
+                  setTakWajibVal(e.target.checked);
+                  data.takWajib = e.target.checked;
+                }}
               />
               <span>TAK wajib</span>
             </label>
@@ -1011,8 +1087,7 @@ export default function Activities({
 
               {visible.map((item) => {
                 const s = String(item.status || "").toLowerCase();
-                const canEdit =
-                  s.includes("disetujui") || s.includes("menunggu");
+                const canEdit = s.includes("disetujui");
 
                 return (
                   <tr key={item.id} className="hover:bg-gray-50">

@@ -114,24 +114,42 @@ function AdminInstansi() {
 
     if (response.ok) {
       const rawData = await response.json();
-      const mappedData = Array.isArray(rawData) ? rawData.map(item => ({
-        id: item.idKegiatan,              
-        serverId: item.idKegiatan,         
-        name: item.nama,                 
+      const base = Array.isArray(rawData) ? rawData.map(item => ({
+        id: item.idKegiatan,
+        serverId: item.idKegiatan,
+        name: item.nama,
         jenis: item.jenis,
         location: item.nama_instansi,
-        date: item.waktu ? item.waktu.split('T')[0] : '', 
+        date: item.waktu ? String(item.waktu).split('T')[0] : '',
         waktu: item.waktu,
-        status: normalizeStatusAPI(item.status_kegiatan), 
-        description: item.deskripsi || '', 
-        nominal: item.nominal_TAK,
+        status: normalizeStatusAPI(item.status_kegiatan),
+        description: '',
+        nominal: 0,
         takWajib: item.TAK_wajib,
-        idLampiran: item.idLampiran || 0,
+        idLampiran: 0,
         minatIds: Array.isArray(item.minat) ? item.minat.map(m => m.idMinat) : [],
         bakatIds: Array.isArray(item.bakat) ? item.bakat.map(b => b.idBakat) : []
       })) : [];
-
-      setActivities(mappedData);
+      const enhanced = await Promise.all(base.map(async it => {
+        try {
+          const r = await fetch(`/api/kegiatan/${it.serverId}?skip_views=true`, { headers: { Authorization: `Bearer ${token}` } });
+          if (!r.ok) return it;
+          const d = await r.json();
+          const idLamp = Number(d?.lampiran?.idLampiran);
+          return {
+            ...it,
+            description: String(d?.deskripsi || ''),
+            nominal: Number(d?.nominal_TAK ?? it.nominal ?? 0),
+            takWajib: !!(d?.TAK_wajib ?? it.takWajib),
+            jenis: String(d?.jenis || it.jenis || ''),
+            waktu: d?.waktu ?? it.waktu,
+            idLampiran: Number.isFinite(idLamp) && idLamp > 0 ? idLamp : it.idLampiran
+          };
+        } catch {
+          return it;
+        }
+      }));
+      setActivities(enhanced);
     }
   } catch (error) {
     console.error("Gagal mengambil data kegiatan:", error);
@@ -219,9 +237,9 @@ function AdminInstansi() {
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 rounded-full text-white grid place-items-center text-sm overflow-hidden">
                 {avatarUrl ? (
-                  <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                  <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" onError={()=>setAvatarUrl('')} />
                 ) : account.avatar ? (
-                  <img src={account.avatar} alt="Avatar" className="w-full h-full object-cover" />
+                  <img src={account.avatar} alt="Avatar" className="w-full h-full object-cover" onError={()=>setAccount(a=>({ ...a, avatar: '' }))} />
                 ) : (
                   <img src={Profile} alt="Avatar" className="w-5 h-5" />
                 )}

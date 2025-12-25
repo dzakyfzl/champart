@@ -29,15 +29,14 @@ async def dapatkan_file(id:str,response:Response,user: Annotated[dict,Depends(va
         print("ERROR : ",e)
         response.status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
         return {"message": "masalah pada sambungan database"}
-    
-    try:
-        output =  FileResponse(path=query[1],media_type=query[2],headers={"Content-Disposition": "inline"},filename=query[0])
-    except Exception as e:
-        print("ERROR : ",e)
-        response.status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
+    if not query:
+        response.status_code = status.HTTP_404_NOT_FOUND
+        return {"message": "lampiran tidak ditemukan"}
+    path_file = query[1]
+    if not path_file or not os.path.isfile(path_file):
+        response.status_code = status.HTTP_404_NOT_FOUND
         return {"message": "file rusak atau tidak ada"}
-    
-    return output
+    return FileResponse(path=path_file,media_type=query[2],headers={"Content-Disposition": "inline"},filename=query[0])
 
 
 @router.post("/upload/account",status_code=200)
@@ -71,7 +70,7 @@ async def create_upload_file(user: Annotated[dict,Depends(validate_token)],respo
     if query_exist[0]:
         query_file_exist = db.execute(select(Lampiran.nama,Lampiran.folder).where(Lampiran.idLampiran==query_exist[0])).first()
         try:
-            os.remove(path=query_file_exist[1])
+            os.remove(query_file_exist[1])
         except Exception as e:
             print("ERROR : ",e)
             response.status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
@@ -97,6 +96,12 @@ async def create_upload_file(user: Annotated[dict,Depends(validate_token)],respo
     
     file.filename = user["username"] + "_" + datetime.datetime.now().strftime("[%H.%M.%S]%d.%m.%Y") + "." + file.content_type[6:]
     filepath = os.path.join("/media", file.filename)
+    try:
+        os.makedirs(os.path.dirname(filepath), exist_ok=True)
+    except Exception as e:
+        print("ERROR : ",e)
+        response.status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
+        return {"message": "gagal menyiapkan direktori media"}
     try:
         with open(filepath, "wb+") as file_object:
             shutil.copyfileobj(file.file, file_object)
@@ -178,7 +183,7 @@ async def create_upload_file(user: Annotated[dict,Depends(validate_token)],respo
     if query_exist[0]:
         query_file_exist = db.execute(select(Lampiran.nama,Lampiran.folder).where(Lampiran.idLampiran==query_exist[0])).first()
         try:
-            os.remove(path=query_file_exist[1])
+            os.remove(query_file_exist[1])
         except Exception as e:
             print("ERROR : ",e)
             response.status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
@@ -194,6 +199,12 @@ async def create_upload_file(user: Annotated[dict,Depends(validate_token)],respo
     
     file.filename = str(query[0]) + "_INSTANSI_" + datetime.datetime.now().strftime("[%H.%M.%S]%d.%m.%Y") + "." + file.content_type[6:]
     filepath = os.path.join("/media", file.filename)
+    try:
+        os.makedirs(os.path.dirname(filepath), exist_ok=True)
+    except Exception as e:
+        print("ERROR : ",e)
+        response.status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
+        return {"message": "gagal menyiapkan direktori media"}
     try:
         with open(filepath, "wb+") as file_object:
             shutil.copyfileobj(file.file, file_object)
@@ -244,6 +255,12 @@ async def create_upload_file(user: Annotated[dict,Depends(validate_token)],respo
     
     file.filename = "KEGIATAN_" + datetime.datetime.now().strftime("[%H.%M.%S]%d.%m.%Y") + "." + file.content_type[6:]
     filepath = os.path.join("/media", file.filename)
+    try:
+        os.makedirs(os.path.dirname(filepath), exist_ok=True)
+    except Exception as e:
+        print("ERROR : ",e)
+        response.status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
+        return {"message": "gagal menyiapkan direktori media"}
     try:
         with open(filepath, "wb+") as file_object:
             shutil.copyfileobj(file.file, file_object)

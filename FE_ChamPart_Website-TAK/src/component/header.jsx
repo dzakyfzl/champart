@@ -185,7 +185,7 @@ function Header(){
             <button type="button" onClick={()=>setOpenUser(v=>!v)} className="flex items-center gap-3 text-gray-700">
               <div className="w-10 h-10 rounded-full overflow-hidden bg-gray-200 border">
                 {avatarUrl ? (
-                  <img src={avatarUrl} alt="Profile" className="w-full h-full object-cover" />
+                  <img src={avatarUrl} alt="Profile" className="w-full h-full object-cover" onError={()=>setAvatarUrl('')} />
                 ) : (
                   <img src={Profile} alt="Profile" className="h-6 w-6 mx-auto my-[3px]" />
                 )}

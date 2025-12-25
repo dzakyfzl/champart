@@ -134,7 +134,7 @@ function App() {
   const isCentered = !["/editprofile", "/editpassword", "/hapusakun"].includes(location.pathname);
 
   const mainClass = hideChrome ? "" :
-    `${isCentered ? "max-w-7xl mx-20 pt-28 pb-14 px-14" : ""} pt-24 pb-5 px-14 flex-grow`;
+    `${isCentered ? "max-w-7xl 2xl:mx-auto mx-20 pt-28 pb-14 px-14" : ""} pt-24 pb-5 px-14 flex-grow`;
 
   return (
     <>
